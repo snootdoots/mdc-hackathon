@@ -249,7 +249,12 @@ function deriveHeatmapFromTimeline(timeline) {
     if (/\bmidterm|final|exam|paper|project\b/i.test(item.title)) weeks[w - 1] += 4;
   });
   const max = Math.max(...weeks, 1);
-  return weeks.map(v => Math.min(10, Math.round((v / max) * 8) + 2));
+  const result = weeks.map(v => {
+    if (max === 0) return 0;
+    return Math.min(10, Math.round((v / max) * 8) + 2);
+  });
+  console.log('Heatmap calculation - raw weeks:', weeks, 'max:', max, 'result:', result);
+  return result;
 }
 
 async function handleFileUpload() {
@@ -320,10 +325,25 @@ async function handleFileUpload() {
   pct.textContent = '100%';
 
   const heatmap = deriveHeatmapFromTimeline(allItems);
+  console.log('Calculated heatmap from uploaded items:', heatmap);
+  console.log('Items by week:', allItems.map(i => ({ week: i.week, title: i.title })));
   const collisionWeeks = heatmap.filter((v, i) => v >= 7).length;
   const score = Math.max(15, Math.min(85, 80 - collisionWeeks * 15));
 
   const studyTasksCount = allItems.reduce((s, i) => s + (i.sub?.length || 1), 0);
+  
+  // Extract unique courses from uploaded items
+  const uniqueCourses = Array.from(new Set(allItems.map(i => i.course)));
+  const coursesData = uniqueCourses.map(courseName => {
+    const courseItems = allItems.filter(i => i.course === courseName);
+    const color = courseItems[0]?.color || '#378ADD';
+    return {
+      name: courseName,
+      color: color,
+      itemCount: courseItems.length
+    };
+  });
+  
   uploadedData = {
     timeline: allItems.sort((a, b) => a.week - b.week),
     heatmap,
@@ -331,27 +351,78 @@ async function handleFileUpload() {
     dangerCount: collisionWeeks,
     totalDeadlines: allItems.length,
     studyTasksCount,
+    courses: coursesData
   };
   currentProfile = 'uploaded';
 
   setTimeout(() => {
     showScreen('dashboard-screen');
+    console.log('About to render heatmap. Uploaded data:', {
+      heatmap: uploadedData.heatmap,
+      timelineLength: uploadedData.timeline.length,
+      week12Value: uploadedData.heatmap[11]
+    });
+    // Force clear and re-render heatmap
+    const heatmapContainer = document.getElementById('heatmap');
+    if (heatmapContainer) {
+      heatmapContainer.innerHTML = '';
+    }
     renderHeatmap(uploadedData.heatmap, false);
     renderTimeline(uploadedData.timeline);
-    animateScore(score, false);
+    animateScore(score, false, collisionWeeks);
     document.getElementById('danger-count').textContent = String(collisionWeeks);
     document.getElementById('danger-sub').textContent = collisionWeeks === 1 ? 'high-collision week' : 'high-collision weeks';
     const totalEl = document.querySelector('.score-cards-mini .score-card .score-card-val');
     const subEl = document.querySelector('.score-cards-mini .score-card .score-card-sub');
     if (totalEl) totalEl.textContent = String(uploadedData.totalDeadlines);
-    if (subEl) subEl.textContent = 'across ' + new Set(allItems.map(i => i.course)).size + ' course(s)';
+    if (subEl) subEl.textContent = 'across ' + uniqueCourses.length + ' course(s)';
     const studyEl = document.getElementById('study-tasks-val');
     const studySubEl = document.getElementById('study-tasks-sub');
     if (studyEl) studyEl.textContent = String(studyTasksCount);
     if (studySubEl) studySubEl.textContent = 'from your syllabi';
     renderUploadedConflicts(uploadedData.timeline, heatmap);
+    renderUploadedCourses(coursesData, studyTasksCount);
     showToast(usedAIParsing ? '✨ Plan generated with AI parsing!' : 'Plan generated from your syllabi ✓');
   }, 800);
+}
+
+// Render courses detected from uploaded syllabi
+function renderUploadedCourses(courses, studyTasksCount) {
+  const container = document.getElementById('courses-detected-container');
+  if (!container) return;
+  
+  if (!courses || courses.length === 0) {
+    container.innerHTML = '<div class="card-inner" style="text-align: center; padding: 20px; color: var(--txt3);">No courses detected</div>';
+    return;
+  }
+  
+  const colors = ['#378ADD', '#D85A30', '#1D9E75', '#0066CC', '#CC6600'];
+  
+  container.innerHTML = courses.map((course, index) => {
+    const color = course.color || colors[index % colors.length];
+    const itemCount = course.itemCount || 0;
+    const itemText = itemCount === 1 ? 'item' : 'items';
+    
+    return `
+      <div class="card-inner">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></div>
+          <div style="font-size: 14px; font-weight: 600; color: inherit;">
+            ${course.name}
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--txt3); line-height: 1.6;">
+          ${itemCount} ${itemText} detected
+        </div>
+      </div>
+    `;
+  }).join('') + `
+    <div class="card-inner" style="background: var(--bg2)">
+      <div style="font-size: 12px; color: var(--txt3); text-align: center; padding: 4px 0;">
+        ✦ AI generated ${studyTasksCount} micro-tasks from your syllabi
+      </div>
+    </div>
+  `;
 }
 
 function renderUploadedConflicts(timeline, heatmap) {
@@ -375,10 +446,21 @@ function renderUploadedConflicts(timeline, heatmap) {
   collisionWeeks.forEach(([week, items], i) => {
     const card = document.createElement('div');
     card.className = 'conflict-card';
+    card.id = `c${i+1}`;
     const badge = items.length >= 3 ? 'danger' : 'warn';
     const label = items.length >= 3 ? '⚠ Critical' : '⚡ Warning';
     const titles = items.map((t) => t.title).join(', ');
-    card.innerHTML = `<span class="conflict-badge ${badge}">${label}</span><div class="conflict-text"><strong>Week ${week} — ${items.length} items due:</strong> ${titles.slice(0, 120)}${titles.length > 120 ? '…' : ''}</div>`;
+    const descText = `Week ${week} — ${items.length} items due: ${titles}`;
+    
+    card.innerHTML = `
+      <span class="conflict-badge ${badge}">${label}</span>
+      <div class="conflict-text"><strong>Week ${week} — ${items.length} items due:</strong> ${titles.slice(0, 120)}${titles.length > 120 ? '…' : ''}</div>
+      <button class="triage-btn" 
+              onclick="openTriageModal('Week ${week} Collision', \`${descText}\`)" 
+              style="margin-top: 10px; font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: none; background: var(--txt); color: var(--bg); cursor: pointer; transition: all 0.15s;">
+        Consult AI Triage →
+      </button>
+    `;
     section.appendChild(card);
   });
 }
@@ -437,9 +519,38 @@ function startLoading(fileNames) {
       timelineData = UMICH_LSA_TL_RAW;
     }
     
-    renderHeatmap(weeksData, false);
+    // Extract courses from demo timeline data
+    const demoCourses = Array.from(new Set(timelineData.map(i => i.course))).map(courseName => {
+      const courseItems = timelineData.filter(i => i.course === courseName);
+      const color = courseItems[0]?.color || '#378ADD';
+      return {
+        name: courseName,
+        color: color,
+        itemCount: courseItems.length
+      };
+    });
+    
+    // Calculate heatmap from demo timeline data (not hardcoded)
+    const demoHeatmap = deriveHeatmapFromTimeline(timelineData);
+    const demoCollisionWeeks = demoHeatmap.filter((v, i) => v >= 7).length;
+    const demoScore = Math.max(15, Math.min(85, 80 - demoCollisionWeeks * 15));
+    
+    // Simulate uploadedData so that the API knows what to optimize
+    uploadedData = {
+      timeline: timelineData,
+      heatmap: demoHeatmap,
+      score: demoScore,
+      dangerCount: demoCollisionWeeks,
+      totalDeadlines: timelineData.length,
+      studyTasksCount: 61,
+      courses: demoCourses,
+      isDemo: true
+    };
+    
+    renderHeatmap(demoHeatmap, false);
     renderTimeline(timelineData);
-    animateScore(32, false);
+    renderUploadedCourses(demoCourses, 61);
+    animateScore(demoScore, false, demoCollisionWeeks);
   }, 3800);
 }
 
@@ -464,8 +575,13 @@ function getBarColor(val, opt) {
 
 function renderHeatmap(data, opt) {
   const container = document.getElementById('heatmap');
+  if (!container) {
+    console.error('Heatmap container not found!');
+    return;
+  }
   const max = 10;
   container.innerHTML = '<div class="heatmap-axis"></div>';
+  console.log('Rendering heatmap with data:', data, 'optimized:', opt);
   data.forEach((val, i) => {
     const pct = (val / max) * 100;
     const color = getBarColor(val, opt);
@@ -488,6 +604,7 @@ function renderHeatmap(data, opt) {
     container.appendChild(wrap);
     setTimeout(() => { bar.style.height = pct + '%'; }, 80 + i * 35);
   });
+  console.log('Heatmap rendered. Week 12 value:', data[11], 'Week 12 should show:', data[11] + '/10');
 }
 
 // ── TIMELINE SYNC ──
@@ -538,7 +655,7 @@ function renderTimeline(items) {
 }
 
 // ── SURVIVAL SCORE ──
-function animateScore(target, isOpt) {
+function animateScore(target, isOpt, dangerCountValue = null) {
   const ring = document.getElementById('score-ring');
   const num = document.getElementById('score-num');
   const desc = document.getElementById('score-desc');
@@ -555,9 +672,16 @@ function animateScore(target, isOpt) {
   } else {
     ring.style.stroke = '#E24B4A';
     num.style.color = '#A32D2D';
-    desc.textContent = 'High risk — multiple collision weeks detected.';
-    dangerCount.textContent = '3';
-    dangerSub.textContent = 'high-collision weeks';
+    const actualDangerCount = dangerCountValue !== null ? dangerCountValue : (uploadedData?.dangerCount ?? 3);
+    if (actualDangerCount === 0) {
+      desc.textContent = 'Low risk — no major collision weeks detected.';
+    } else if (actualDangerCount === 1) {
+      desc.textContent = 'Moderate risk — one high-collision week detected.';
+    } else {
+      desc.textContent = 'High risk — multiple collision weeks detected.';
+    }
+    dangerCount.textContent = String(actualDangerCount);
+    dangerSub.textContent = actualDangerCount === 1 ? 'high-collision week' : 'high-collision weeks';
   }
 
   const offset = circ - (target / 100) * circ;
@@ -590,23 +714,57 @@ function createOptimizedFromUploaded(timeline) {
 }
 
 // ── OPTIMIZE TOGGLE ──
-function toggleOptimize() {
-  optimized = !optimized;
+async function toggleOptimize() {
   const btn = document.getElementById('optimize-btn');
   const label = document.getElementById('opt-label');
 
-  let optWeeksData = OPT_WEEKS;
-  let optTimelineData = TL_OPT;
+  if (!optimized) {
+    // Turning optimization ON
+    if (!uploadedData || !uploadedData.timeline || uploadedData.timeline.length === 0) {
+      showToast('No syllabus data to optimize yet.');
+      return;
+    }
 
-  if (currentProfile === 'umich-lsa') {
-    optWeeksData = UMICH_LSA_WEEKS;
-    optTimelineData = UMICH_LSA_TL_OPT;
-  } else if (currentProfile === 'uploaded' && uploadedData) {
-    optTimelineData = createOptimizedFromUploaded(uploadedData.timeline);
+    let optTimelineData = [];
+    let optWeeksData = [];
+    
+    // Check if we already fetched it
+    if (uploadedData.optimizedTimeline) {
+      optTimelineData = uploadedData.optimizedTimeline;
+    } else {
+      label.textContent = 'Optimizing...';
+      btn.style.opacity = '0.7';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/optimize-schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timeline: uploadedData.timeline })
+        });
+        
+        if (!response.ok) throw new Error('API failed');
+        const data = await response.json();
+        
+        if (data.success && data.optimizedTimeline) {
+          optTimelineData = data.optimizedTimeline;
+          uploadedData.optimizedTimeline = optTimelineData; // cache it
+        } else {
+          throw new Error('Invalid AI response');
+        }
+      } catch (e) {
+        console.error("Optimization failed, falling back to heuristic", e);
+        showToast('AI Optimization failed. Using heuristic fallback.');
+        optTimelineData = createOptimizedFromUploaded(uploadedData.timeline);
+      } finally {
+        btn.style.opacity = '1';
+        btn.disabled = false;
+      }
+    }
+    
+    optimized = true;
     optWeeksData = deriveHeatmapFromTimeline(optTimelineData);
-  }
-
-  if (optimized) {
+    
     btn.classList.add('optimized');
     label.textContent = 'Optimized ✓';
     renderHeatmap(optWeeksData, true);
@@ -622,21 +780,30 @@ function toggleOptimize() {
       }
     });
   } else {
+    // Turning optimization OFF
+    optimized = false;
     btn.classList.remove('optimized');
     label.textContent = 'AI Schedule Optimizer';
     
     // Select raw data based on profile
     let rawWeeksData = RAW_WEEKS;
     let rawTimelineData = TL_RAW;
+    let rawScore = 32;
+    let rawDangerCount = 3;
     
-    if (currentProfile === 'umich-lsa') {
+    if (uploadedData && !uploadedData.isDemo) {
+      rawTimelineData = uploadedData.timeline;
+      rawWeeksData = uploadedData.heatmap;
+      rawScore = uploadedData.score;
+      rawDangerCount = uploadedData.dangerCount;
+    } else if (currentProfile === 'umich-lsa') {
       rawWeeksData = UMICH_LSA_WEEKS;
       rawTimelineData = UMICH_LSA_TL_RAW;
     }
     
     renderHeatmap(rawWeeksData, false);
     renderTimeline(rawTimelineData);
-    animateScore(32, false);
+    animateScore(rawScore, false, rawDangerCount);
     ['c1', 'c2', 'c3'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -661,9 +828,48 @@ function showToast(msg) {
 }
 
 // ── AI TRIAGE MODAL ──
-function openTriageModal(triageType) {
+async function openTriageModal(triageType, conflictContextText) {
   const modal = document.getElementById('triage-modal');
+  const titleEl = document.getElementById('triage-title');
+  const situationEl = document.getElementById('triage-situation');
+  const adminEl = document.getElementById('triage-admin');
+  const strategyEl = document.getElementById('triage-strategy');
+  
+  titleEl.textContent = `AI Triage Protocol: ` + triageType;
+  situationEl.textContent = 'Analyzing conflict...';
+  adminEl.textContent = 'Loading administrative options...';
+  strategyEl.innerHTML = '<div class="loading-status-label" style="text-align:left;font-size:12px;margin:top:8px;">Consulting AI...</div>';
+  
   modal.style.display = 'flex';
+
+  try {
+    const response = await fetch('/api/triage-conflict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conflictContext: conflictContextText })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.success && data.triagePlan) {
+      situationEl.innerHTML = `<strong>The Situation:</strong> ${data.triagePlan.situation}`;
+      adminEl.innerHTML = `<strong>Administrative Check:</strong> ${data.triagePlan.administrative}`;
+      strategyEl.innerHTML = `<strong>Survival Strategy:</strong> ${data.triagePlan.strategy}`;
+    } else {
+      throw new Error(data.error || 'Invalid AI response');
+    }
+  } catch (e) {
+    console.error("Triage AI failed", e);
+    const errorMsg = e.message || 'Unknown error';
+    situationEl.innerHTML = `<strong>Error:</strong> Failed to connect to AI Triage protocol. ${errorMsg}`;
+    adminEl.innerHTML = `<em style="font-size: 11px; color: var(--txt2);">Check browser console for details. Make sure the server is running and GEMINI_API_KEY is set.</em>`;
+    strategyEl.innerHTML = ``;
+  }
 }
 
 function closeTriageModal() {

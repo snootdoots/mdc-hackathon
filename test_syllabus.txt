@@ -1,0 +1,37 @@
+CS 280 - Data Structures and Algorithms
+Fall 2024 Syllabus
+
+Course Schedule:
+
+Week 1 (Sept 2-6): Introduction to Data Structures
+- Reading: Chapters 1-2
+- Assignment 1 due: Friday, Sept 6
+
+Week 2 (Sept 9-13): Arrays and Linked Lists
+- Lab 1 due: Wednesday, Sept 11
+- Quiz 1: Friday, Sept 13
+
+Week 3 (Sept 16-20): Stacks and Queues
+- Assignment 2 due: Monday, Sept 16
+- Project 1 proposal due: Friday, Sept 20
+
+Week 5 (Sept 30 - Oct 4): Trees
+- Midterm Exam: Wednesday, Oct 2
+- Assignment 3 due: Friday, Oct 4
+
+Week 8 (Oct 21-25): Graphs
+- Project 1 due: Monday, Oct 21
+- Assignment 4 due: Friday, Oct 25
+
+Week 10 (Nov 4-8): Sorting Algorithms
+- Quiz 2: Wednesday, Nov 6
+- Assignment 5 due: Friday, Nov 8
+
+Week 12 (Nov 18-22): Hash Tables
+- Project 2 due: Monday, Nov 18
+- Assignment 6 due: Friday, Nov 22
+
+Week 15 (Dec 9-13): Final Exam Week
+- Final Exam: Monday, Dec 9, 8:00 AM
+- Final Project due: Wednesday, Dec 11
+

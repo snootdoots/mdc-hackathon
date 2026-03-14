@@ -158,7 +158,7 @@
               </div>
               <button
                 class="triage-btn"
-                onclick="openTriageModal('Week 8 Collision')"
+                onclick="openTriageModal('Week 8 Collision', 'Week 8 — Triple collision: CS Midterm + History 10-page paper + Stats Problem Set all due within 48 hours.')"
                 style="
                   margin-top: 10px;
                   font-size: 11px;
@@ -184,7 +184,7 @@
               </div>
               <button
                 class="triage-btn"
-                onclick="openTriageModal('Week 11 Collision')"
+                onclick="openTriageModal('Week 11 Collision', 'Week 11 — Back-to-back crunch: Lit review due Monday, group project milestone Friday. Only 4 days to pivot between two completely different courses.')"
                 style="
                   margin-top: 10px;
                   font-size: 11px;
@@ -210,7 +210,7 @@
               </div>
               <button
                 class="triage-btn"
-                onclick="openTriageModal('Week 14 Collision')"
+                onclick="openTriageModal('Week 14 Collision', 'Week 14 — Finals ramp-up: CS final project + Stats final exam fall in the same 72-hour window before the official finals period begins.')"
                 style="
                   margin-top: 10px;
                   font-size: 11px;
@@ -275,7 +275,7 @@
               <div class="section-header">
                 <div class="section-title">Courses Detected</div>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 10px">
+              <div id="courses-detected-container" style="display: flex; flex-direction: column; gap: 10px">
                 <div class="card-inner">
                   <div
                     style="
@@ -467,7 +467,7 @@
           "
           onclick="event.stopPropagation()"
         >
-          <h2
+          <h2 id="triage-title"
             style="
               font-size: 18px;
               font-weight: 700;
@@ -476,7 +476,7 @@
               line-height: 1.3;
             "
           >
-            AI Triage Protocol: Week 8 Collision
+            AI Triage Protocol
           </h2>
 
           <div
@@ -487,23 +487,13 @@
               margin-bottom: 20px;
             "
           >
-            <div style="margin-bottom: 12px">
-              <strong>The Situation:</strong> Math EECS 280 Exam (Morning) &
-              STATS 401 Exam (Evening),
+            <div id="triage-situation" style="margin-bottom: 12px">
             </div>
 
-            <div style="margin-bottom: 12px">
-              <strong>Administrative Check:</strong> You do not meet the UMich
-              threshold of '3 exams in one calendar day.' A reschedule request
-              will be automatically denied. Do not waste time emailing the
-              coordinators.
+            <div id="triage-admin" style="margin-bottom: 12px">
             </div>
 
-            <div>
-              <strong>Survival Strategy:</strong> The Optimizer has already
-              cleared your Monday. You must completely cease studying for Math
-              by 6:00 PM Monday to avoid cognitive fatigue. Review Chem
-              flashcards only on Tuesday afternoon.
+            <div id="triage-strategy">
             </div>
           </div>
 
