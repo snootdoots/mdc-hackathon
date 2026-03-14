@@ -570,6 +570,17 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2400);
 }
 
+// ── AI TRIAGE MODAL ──
+function openTriageModal(triageType) {
+  const modal = document.getElementById('triage-modal');
+  modal.style.display = 'flex';
+}
+
+function closeTriageModal() {
+  const modal = document.getElementById('triage-modal');
+  modal.style.display = 'none';
+}
+
 // ── CALENDAR DOWNLOAD ──
 function downloadCalendar() {
   const today = new Date();
