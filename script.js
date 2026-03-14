@@ -121,7 +121,7 @@ function getBarColor(val, opt) {
 
 function renderHeatmap(data, opt) {
   const container = document.getElementById('heatmap');
-  const max = Math.max(...data);
+  const max = 10;
   container.innerHTML = '<div class="heatmap-axis"></div>';
   data.forEach((val, i) => {
     const pct = (val / max) * 100;
@@ -137,9 +137,38 @@ function renderHeatmap(data, opt) {
     lbl.className = 'heatmap-label';
     lbl.textContent = `W${i + 1}`;
     wrap.appendChild(lbl);
+    
+    // Add hover interactions
+    wrap.addEventListener('mouseenter', () => highlightWeek(i + 1));
+    wrap.addEventListener('mouseleave', clearHighlight);
+
     container.appendChild(wrap);
     setTimeout(() => { bar.style.height = pct + '%'; }, 80 + i * 35);
   });
+}
+
+// ── TIMELINE SYNC ──
+function highlightWeek(weekNum) {
+  const container = document.getElementById('timeline').parentElement;
+  let firstItem = null;
+  const items = document.querySelectorAll('.timeline-item');
+  items.forEach(item => {
+    const weekEl = item.querySelector('.tl-week');
+    if (weekEl && weekEl.textContent === `W${weekNum}`) {
+      item.classList.add('highlight');
+      if (!firstItem) firstItem = item;
+    }
+  });
+
+  if (firstItem && container) {
+    // Scroll to the item within the scrollable container
+    const offsetTop = firstItem.offsetTop - document.getElementById('timeline').offsetTop;
+    container.scrollTo({ top: offsetTop - 10, behavior: 'smooth' });
+  }
+}
+
+function clearHighlight() {
+  document.querySelectorAll('.timeline-item').forEach(item => item.classList.remove('highlight'));
 }
 
 // ── TIMELINE ──
