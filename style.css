@@ -495,7 +495,6 @@ body {
   align-items: flex-end;
   gap: 4px;
   height: 120px;
-  padding-bottom: 24px;
   position: relative;
 }
 
@@ -503,8 +502,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  justify-content: flex-end; /* Push to bottom */
   height: 100%;
 }
 
@@ -538,11 +536,13 @@ body {
   font-size: 10px;
   color: var(--txt3);
   font-family: var(--mono);
+  margin-top: 4px;
+  text-align: center;
 }
 
 .heatmap-axis {
   position: absolute;
-  bottom: 0;
+  bottom: 20px; /* Align with bottom of bars, above label */
   left: 0;
   right: 0;
   height: 1px;
@@ -570,9 +570,16 @@ body {
 .timeline-item {
   display: flex;
   gap: 12px;
-  padding: 10px 0;
+  padding: 10px 12px;
+  margin: 0 -12px;
   border-bottom: 0.5px solid var(--border);
-  transition: background 0.15s;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.timeline-item.highlight {
+  background: var(--bg2);
+  border-color: transparent;
 }
 
 .timeline-item:last-child {
