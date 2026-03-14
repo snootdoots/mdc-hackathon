@@ -143,6 +143,20 @@ async function extractText(file) {
   throw new Error('Unsupported format');
 }
 
+// Map month names to typical semester week (fall: Sept=1, Dec=16)
+function monthToWeek(monthStr) {
+  const m = String(monthStr).toLowerCase();
+  if (/sept|sep\b/.test(m)) return 1;
+  if (/oct/.test(m)) return 5;
+  if (/nov/.test(m)) return 9;
+  if (/dec/.test(m)) return 14;
+  if (/jan|spring/.test(m)) return 1;
+  if (/feb/.test(m)) return 5;
+  if (/mar/.test(m)) return 9;
+  if (/apr|may/.test(m)) return 14;
+  return null;
+}
+
 // Heuristic parser: extract assignments with week numbers from syllabus text
 function parseSyllabusText(text, courseHint) {
   const items = [];
@@ -150,7 +164,6 @@ function parseSyllabusText(text, courseHint) {
   const colors = ['#378ADD', '#D85A30', '#1D9E75', '#0066CC', '#CC6600'];
   const course = courseHint || 'Course';
 
-  const weekRegex = /(?:week|wk\.?)\s*(\d{1,2})(?:\s|:|-|,|\)|$)/gi;
   const assignmentPatterns = [
     /\b(midterm|final)\s*(exam|test)?/gi,
     /\b(quiz|quizzes)\s*(\d+)?/gi,
@@ -175,24 +188,40 @@ function parseSyllabusText(text, courseHint) {
     });
   };
 
-  const blocks = text.split(/\n\n+|\r\n\r\n+/);
-  for (const block of blocks) {
-    const lines = block.split(/\n/).map(l => l.trim()).filter(l => l.length > 8);
-    for (const line of lines) {
-      const weekMatch = line.match(/(?:week|wk\.?)\s*(\d{1,2})/gi);
-      const weeks = weekMatch ? [...new Set(weekMatch.map(m => parseInt(m.replace(/\D/g, ''), 10)).filter(n => n >= 1 && n <= 16))] : [];
-      const week = weeks[0];
+  const allLines = text.split(/\n/).map(l => l.trim()).filter(l => l.length > 6);
+  for (const line of allLines) {
+    const weekMatch = line.match(/(?:week|wk\.?)\s*(\d{1,2})/gi);
+    const weekNumMatch = line.match(/(\d{1,2})\s*(?:weeks?|wks?)/i);
+    const monthMatch = line.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b/i);
+    const dateMatch = line.match(/(\d{1,2})\/(\d{1,2})|(\d{1,2})\s*[-–]\s*(\d{1,2})/);
+    let week = null;
+    if (weekMatch) {
+      const nums = [...new Set(weekMatch.map(m => parseInt(m.replace(/\D/g, ''), 10)).filter(n => n >= 1 && n <= 16))];
+      week = nums[0];
+    } else if (weekNumMatch) {
+      week = Math.min(16, Math.max(1, parseInt(weekNumMatch[1], 10)));
+    } else if (monthMatch) {
+      week = monthToWeek(monthMatch[1]);
+    } else if (dateMatch) {
+      const m = parseInt(dateMatch[1] || dateMatch[3], 10);
+      if (m >= 8 && m <= 12) week = 1 + Math.floor((m - 8) * 4);
+      else if (m >= 1 && m <= 5) week = 9 + Math.floor(m);
+    }
 
-      for (const pat of assignmentPatterns) {
-        if (new RegExp(pat.source, 'i').test(line)) {
-          const w = week || (items.length < 4 ? 3 + items.length : Math.min(14, 5 + items.length));
-          addItem(w, line);
-          break;
-        }
+    for (const pat of assignmentPatterns) {
+      if (new RegExp(pat.source, 'i').test(line)) {
+        const w = week || (items.length < 4 ? 3 + items.length : Math.min(14, 5 + items.length));
+        addItem(w, line);
+        break;
       }
-      if (!week && /\bdue\b|\bdeadline\b|\bsubmit\b|\d{1,2}\/\d{1,2}/i.test(line) && line.length > 12) {
-        addItem(Math.min(14, 4 + items.length), line);
-      }
+    }
+    if (
+      !week &&
+      /\b(due|deadline|submit|assignment|homework|quiz|exam|paper|project|lab)\b/i.test(line) &&
+      line.length > 10 &&
+      items.length < 30
+    ) {
+      addItem(Math.min(14, 4 + Math.floor(items.length / 2)), line);
     }
   }
 
@@ -237,6 +266,7 @@ async function handleFileUpload() {
   pills.innerHTML = Array.from(files).map(f => `<div class="loading-file-pill"><div class="dot"></div>${f.name}</div>`).join('');
 
   let allItems = [];
+  let usedAIParsing = false;
   const n = files.length;
   for (let i = 0; i < n; i++) {
     const file = files[i];
@@ -246,28 +276,35 @@ async function handleFileUpload() {
     pct.textContent = Math.round((i / n) * 50) + '%';
 
     try {
-      // Use the backend API to parse the syllabus
+      // Try backend API first (when server is running)
       const formData = new FormData();
       formData.append('file', file);
-      
       const response = await fetch('/api/parse-syllabus', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.items?.length) {
+          allItems = allItems.concat(result.items);
+          if (result.parsedWith === 'ai') usedAIParsing = true;
+          continue;
+        }
       }
-
-      const result = await response.json();
-      if (result.success && result.items) {
-        allItems = allItems.concat(result.items);
-      } else {
-        throw new Error(result.error || 'Failed to parse syllabus');
+      throw new Error('API failed or empty');
+    } catch (_) {
+      // Fallback: extract text client-side and parse with heuristics
+      try {
+        const text = await extractText(file);
+        const items = parseSyllabusText(text, course);
+        if (items.length > 0) {
+          allItems = allItems.concat(items);
+          continue;
+        }
+      } catch (extractErr) {
+        console.warn('Client-side parse failed for', file.name, extractErr);
       }
-    } catch (e) {
-      console.warn('Parse error for', file.name, e);
-      const course = deriveCourseFromFilename(file.name);
       allItems.push({
         week: 4 + i * 3,
         color: ['#378ADD', '#D85A30', '#1D9E75', '#0066CC'][i % 4],
@@ -286,12 +323,14 @@ async function handleFileUpload() {
   const collisionWeeks = heatmap.filter((v, i) => v >= 7).length;
   const score = Math.max(15, Math.min(85, 80 - collisionWeeks * 15));
 
+  const studyTasksCount = allItems.reduce((s, i) => s + (i.sub?.length || 1), 0);
   uploadedData = {
     timeline: allItems.sort((a, b) => a.week - b.week),
     heatmap,
     score,
     dangerCount: collisionWeeks,
     totalDeadlines: allItems.length,
+    studyTasksCount,
   };
   currentProfile = 'uploaded';
 
@@ -306,8 +345,42 @@ async function handleFileUpload() {
     const subEl = document.querySelector('.score-cards-mini .score-card .score-card-sub');
     if (totalEl) totalEl.textContent = String(uploadedData.totalDeadlines);
     if (subEl) subEl.textContent = 'across ' + new Set(allItems.map(i => i.course)).size + ' course(s)';
-    showToast('Plan generated from your syllabi ✓');
+    const studyEl = document.getElementById('study-tasks-val');
+    const studySubEl = document.getElementById('study-tasks-sub');
+    if (studyEl) studyEl.textContent = String(studyTasksCount);
+    if (studySubEl) studySubEl.textContent = 'from your syllabi';
+    renderUploadedConflicts(uploadedData.timeline, heatmap);
+    showToast(usedAIParsing ? '✨ Plan generated with AI parsing!' : 'Plan generated from your syllabi ✓');
   }, 800);
+}
+
+function renderUploadedConflicts(timeline, heatmap) {
+  const section = document.getElementById('conflicts-section');
+  if (!section) return;
+  const byWeek = {};
+  timeline.forEach((item) => {
+    const w = item.week;
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(item);
+  });
+  const collisionWeeks = Object.entries(byWeek)
+    .filter(([, items]) => items.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 3);
+  section.innerHTML = '';
+  if (collisionWeeks.length === 0) {
+    section.innerHTML = '<div class="conflict-card" style="background:var(--green-light);border-color:var(--green-mid)"><span class="conflict-badge" style="background:var(--green);color:#fff">✓</span><div class="conflict-text">No major deadline collisions detected in your syllabi.</div></div>';
+    return;
+  }
+  collisionWeeks.forEach(([week, items], i) => {
+    const card = document.createElement('div');
+    card.className = 'conflict-card';
+    const badge = items.length >= 3 ? 'danger' : 'warn';
+    const label = items.length >= 3 ? '⚠ Critical' : '⚡ Warning';
+    const titles = items.map((t) => t.title).join(', ');
+    card.innerHTML = `<span class="conflict-badge ${badge}">${label}</span><div class="conflict-text"><strong>Week ${week} — ${items.length} items due:</strong> ${titles.slice(0, 120)}${titles.length > 120 ? '…' : ''}</div>`;
+    section.appendChild(card);
+  });
 }
 
 // ── DEMO LOGIC ──
