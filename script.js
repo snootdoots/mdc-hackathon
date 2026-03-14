@@ -93,7 +93,205 @@ const UMICH_LSA_TL_OPT = [
 // ── STATE ──
 let optimized = false;
 let scoreAnimated = false;
-let currentProfile = 'cs'; // Track which profile is being used
+let currentProfile = 'cs';
+let uploadedData = null; // { timeline: [], heatmap: [], courses: [] } from file upload
+
+// ── PDF.JS WORKER ──
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── FILE UPLOAD ──
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('file-input');
+  const btn = document.getElementById('upload-btn');
+  const countEl = document.getElementById('file-count');
+  if (input) {
+    input.addEventListener('change', () => {
+      const n = input.files?.length || 0;
+      btn.disabled = n === 0;
+      if (countEl) {
+        countEl.textContent = n === 0 ? '' : n === 1 ? '1 file selected' : n + ' files selected';
+      }
+    });
+  }
+});
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const numPages = pdf.numPages;
+  let text = '';
+  for (let i = 1; i <= Math.min(numPages, 20); i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function extractTextFromDocx(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+async function extractText(file) {
+  const ext = (file.name || '').toLowerCase();
+  if (ext.endsWith('.pdf')) return extractTextFromPDF(file);
+  if (ext.endsWith('.docx')) return extractTextFromDocx(file);
+  throw new Error('Unsupported format');
+}
+
+// Heuristic parser: extract assignments with week numbers from syllabus text
+function parseSyllabusText(text, courseHint) {
+  const items = [];
+  const seen = new Set();
+  const colors = ['#378ADD', '#D85A30', '#1D9E75', '#0066CC', '#CC6600'];
+  const course = courseHint || 'Course';
+
+  const weekRegex = /(?:week|wk\.?)\s*(\d{1,2})(?:\s|:|-|,|\)|$)/gi;
+  const assignmentPatterns = [
+    /\b(midterm|final)\s*(exam|test)?/gi,
+    /\b(quiz|quizzes)\s*(\d+)?/gi,
+    /\b(homework|hw|problem\s*set|ps|pset)\s*(\d+)?/gi,
+    /\b(paper|essay|report|project)\s*(?:due|submission)?/gi,
+    /\b(lab\s*report|assignment)\s*(\d+)?/gi,
+    /\b(discussion|reading)\s*(?:due|response)?/gi,
+    /\b(presentation|milestone)/gi,
+  ];
+
+  const addItem = (week, rawTitle) => {
+    const title = rawTitle.replace(/\s+/g, ' ').trim().slice(0, 60);
+    const key = `${week}-${title.slice(0, 30)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({
+      week: Math.max(1, Math.min(16, week)),
+      color: colors[items.length % colors.length],
+      course,
+      title: title.length > 50 ? title.slice(0, 47) + '…' : title,
+      sub: ['Review materials', 'Complete assignment', 'Submit on time'],
+    });
+  };
+
+  const blocks = text.split(/\n\n+|\r\n\r\n+/);
+  for (const block of blocks) {
+    const lines = block.split(/\n/).map(l => l.trim()).filter(l => l.length > 8);
+    for (const line of lines) {
+      const weekMatch = line.match(/(?:week|wk\.?)\s*(\d{1,2})/gi);
+      const weeks = weekMatch ? [...new Set(weekMatch.map(m => parseInt(m.replace(/\D/g, ''), 10)).filter(n => n >= 1 && n <= 16))] : [];
+      const week = weeks[0];
+
+      for (const pat of assignmentPatterns) {
+        if (new RegExp(pat.source, 'i').test(line)) {
+          const w = week || (items.length < 4 ? 3 + items.length : Math.min(14, 5 + items.length));
+          addItem(w, line);
+          break;
+        }
+      }
+      if (!week && /\bdue\b|\bdeadline\b|\bsubmit\b|\d{1,2}\/\d{1,2}/i.test(line) && line.length > 12) {
+        addItem(Math.min(14, 4 + items.length), line);
+      }
+    }
+  }
+
+  if (items.length === 0) {
+    items.push(
+      { week: 4, color: colors[0], course, title: 'Assignment / Exam detected', sub: ['Check syllabus for details'] },
+      { week: 8, color: colors[0], course, title: 'Midterm or major deadline', sub: ['Prepare in advance'] },
+      { week: 14, color: colors[0], course, title: 'Final / end-of-term work', sub: ['Review all material'] },
+    );
+  }
+
+  return items;
+}
+
+function deriveCourseFromFilename(name) {
+  const m = name.match(/([A-Z]{2,5}\s*\d{3,4})/i);
+  return m ? m[1].replace(/\s+/, ' ').toUpperCase() : name.replace(/\.(pdf|docx)$/i, '').replace(/_/g, ' ').slice(0, 20);
+}
+
+function deriveHeatmapFromTimeline(timeline) {
+  const weeks = new Array(16).fill(0);
+  timeline.forEach(item => {
+    const w = Math.min(16, Math.max(1, item.week));
+    weeks[w - 1] += 3;
+    if (/\bmidterm|final|exam|paper|project\b/i.test(item.title)) weeks[w - 1] += 4;
+  });
+  const max = Math.max(...weeks, 1);
+  return weeks.map(v => Math.min(10, Math.round((v / max) * 8) + 2));
+}
+
+async function handleFileUpload() {
+  const input = document.getElementById('file-input');
+  const files = input?.files;
+  if (!files?.length) return;
+
+  showScreen('loading-screen');
+  const pills = document.getElementById('loading-pills');
+  const fill = document.getElementById('progress-fill');
+  const pct = document.getElementById('progress-pct');
+  const label = document.getElementById('loading-label');
+
+  pills.innerHTML = Array.from(files).map(f => `<div class="loading-file-pill"><div class="dot"></div>${f.name}</div>`).join('');
+
+  let allItems = [];
+  const n = files.length;
+  for (let i = 0; i < n; i++) {
+    const file = files[i];
+    const course = deriveCourseFromFilename(file.name);
+    label.textContent = `Extracting text from ${file.name}…`;
+    fill.style.width = ((i / n) * 50) + '%';
+    pct.textContent = Math.round((i / n) * 50) + '%';
+
+    try {
+      const text = await extractText(file);
+      const items = parseSyllabusText(text, course);
+      allItems = allItems.concat(items);
+    } catch (e) {
+      console.warn('Parse error for', file.name, e);
+      allItems.push({
+        week: 4 + i * 3,
+        color: ['#378ADD', '#D85A30', '#1D9E75', '#0066CC'][i % 4],
+        course,
+        title: file.name + ' (parse limited)',
+        sub: ['Open syllabus for full schedule'],
+      });
+    }
+  }
+
+  label.textContent = 'Building your survival plan…';
+  fill.style.width = '100%';
+  pct.textContent = '100%';
+
+  const heatmap = deriveHeatmapFromTimeline(allItems);
+  const collisionWeeks = heatmap.filter((v, i) => v >= 7).length;
+  const score = Math.max(15, Math.min(85, 80 - collisionWeeks * 15));
+
+  uploadedData = {
+    timeline: allItems.sort((a, b) => a.week - b.week),
+    heatmap,
+    score,
+    dangerCount: collisionWeeks,
+    totalDeadlines: allItems.length,
+  };
+  currentProfile = 'uploaded';
+
+  setTimeout(() => {
+    showScreen('dashboard-screen');
+    renderHeatmap(uploadedData.heatmap, false);
+    renderTimeline(uploadedData.timeline);
+    animateScore(score, false);
+    document.getElementById('danger-count').textContent = String(collisionWeeks);
+    document.getElementById('danger-sub').textContent = collisionWeeks === 1 ? 'high-collision week' : 'high-collision weeks';
+    const totalEl = document.querySelector('.score-cards-mini .score-card .score-card-val');
+    const subEl = document.querySelector('.score-cards-mini .score-card .score-card-sub');
+    if (totalEl) totalEl.textContent = String(uploadedData.totalDeadlines);
+    if (subEl) subEl.textContent = 'across ' + new Set(allItems.map(i => i.course)).size + ' course(s)';
+    showToast('Plan generated from your syllabi ✓');
+  }, 800);
+}
 
 // ── DEMO LOGIC ──
 function startSelectedDemo() {
@@ -284,19 +482,38 @@ function animateScore(target, isOpt) {
   }, 30);
 }
 
+function createOptimizedFromUploaded(timeline) {
+  const spread = [];
+  const used = new Set();
+  timeline.forEach((item, i) => {
+    let w = item.week;
+    while (used.has(w) && w < 16) w++;
+    used.add(w);
+    spread.push({
+      ...item,
+      week: w,
+      title: item.title.replace(/^⚠\s*/, ''),
+      sub: ['Spread across week', 'Avoid last-minute crunch'],
+    });
+  });
+  return spread.sort((a, b) => a.week - b.week);
+}
+
 // ── OPTIMIZE TOGGLE ──
 function toggleOptimize() {
   optimized = !optimized;
   const btn = document.getElementById('optimize-btn');
   const label = document.getElementById('opt-label');
 
-  // Select optimized data based on profile
   let optWeeksData = OPT_WEEKS;
   let optTimelineData = TL_OPT;
-  
+
   if (currentProfile === 'umich-lsa') {
-    optWeeksData = UMICH_LSA_WEEKS; // Could create separate OPT version if needed
+    optWeeksData = UMICH_LSA_WEEKS;
     optTimelineData = UMICH_LSA_TL_OPT;
+  } else if (currentProfile === 'uploaded' && uploadedData) {
+    optTimelineData = createOptimizedFromUploaded(uploadedData.timeline);
+    optWeeksData = deriveHeatmapFromTimeline(optTimelineData);
   }
 
   if (optimized) {
@@ -382,8 +599,15 @@ function downloadCalendar() {
   icsContent += 'CALSCALE:GREGORIAN\r\n';
   icsContent += 'METHOD:PUBLISH\r\n';
   
-  // Add each task as an event
-  TL_OPT.forEach((task, index) => {
+  let tasksToExport;
+  if (currentProfile === 'uploaded' && uploadedData) {
+    tasksToExport = optimized ? createOptimizedFromUploaded(uploadedData.timeline) : uploadedData.timeline;
+  } else if (currentProfile === 'umich-lsa') {
+    tasksToExport = optimized ? UMICH_LSA_TL_OPT : UMICH_LSA_TL_RAW;
+  } else {
+    tasksToExport = optimized ? TL_OPT : TL_RAW;
+  }
+  tasksToExport.forEach((task, index) => {
     // Calculate date: each week maps to a day next week
     const eventDate = new Date(nextWeekStart);
     eventDate.setDate(nextWeekStart.getDate() + (task.week - 1));
