@@ -679,3 +679,17 @@ function downloadCalendar() {
   // Show toast notification
   showToast('📅 Calendar file downloaded!');
 }
+
+// ── SECRET ADMIN RADAR HOTKEY (Shift + A) ──
+document.addEventListener('keydown', (e) => {
+  if (e.shiftKey && e.key.toLowerCase() === 'a') {
+    const adminScreen = document.getElementById('admin-screen');
+    const isHidden = !adminScreen.classList.contains('active');
+    if (isHidden) {
+      showScreen('admin-screen');
+    } else {
+      // Go back to the dashboard we were just on
+      showScreen('dashboard-screen');
+    }
+  }
+});

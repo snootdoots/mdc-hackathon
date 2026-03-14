@@ -531,6 +531,61 @@
       </div>
     </div>
 
+    <!-- ── ADMIN GOD-MODE RADAR ── -->
+    <div id="admin-screen" class="screen">
+      <nav class="dash-nav" style="background: var(--txt); color: var(--bg);">
+        <div class="dash-nav-brand" style="color: var(--bg);">survive<span>.</span> <span style="opacity:0.5; font-weight:400; font-size: 12px; margin-left: 8px;">DEAN OF STUDENTS PORTAL</span></div>
+        <div class="dash-nav-right">
+          <span style="font-size: 12px; opacity: 0.8; font-family: var(--mono);">LSA COHORT: FALL 2026</span>
+        </div>
+      </nav>
+      
+      <div class="dash-body">
+        <div class="section-header" style="margin-bottom: 24px;">
+          <div class="section-title" style="font-size: 24px;">Campus Burnout Radar</div>
+        </div>
+
+        <div class="two-col" style="margin-bottom: 24px;">
+          <div class="score-card" style="background: var(--red); color: white; border:none;">
+            <div class="score-card-label" style="color: rgba(255,255,255,0.7);">Imminent Dropouts (Next 14 Days)</div>
+            <div class="score-card-val" style="color: white; font-size: 36px;">142</div>
+            <div class="score-card-sub" style="color: rgba(255,255,255,0.9);">Freshmen entering critical collision weeks</div>
+          </div>
+          <div class="score-card" style="background: var(--txt); color: white; border:none;">
+            <div class="score-card-label" style="color: rgba(255,255,255,0.7);">Tuition Revenue at Risk</div>
+            <div class="score-card-val" style="color: #97C459; font-size: 36px;">$4.97M</div>
+            <div class="score-card-sub" style="color: rgba(255,255,255,0.9);">Based on avg. lifetime LSA tuition ($35k/student)</div>
+          </div>
+        </div>
+
+        <div class="card-inner">
+          <div class="section-header">
+            <div class="section-title">Critical Structural Collisions Detected</div>
+          </div>
+          <table style="width: 100%; text-align: left; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border); color: var(--txt3);">
+              <th style="padding: 12px 8px; font-weight: 500;">Conflict Vector</th>
+              <th style="padding: 12px 8px; font-weight: 500;">Affected Students</th>
+              <th style="padding: 12px 8px; font-weight: 500;">Severity</th>
+              <th style="padding: 12px 8px; font-weight: 500;">Action</th>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 16px 8px; font-weight: 600;">MATH 115 Midterm + CHEM 210 Lab (Week 8)</td>
+              <td style="padding: 16px 8px; font-family: var(--mono);">318</td>
+              <td style="padding: 16px 8px;"><span class="conflict-badge danger">⚠ Critical</span></td>
+              <td style="padding: 16px 8px;"><button class="triage-btn" style="background:var(--txt); color:var(--bg); padding:6px 12px; border-radius:6px; border:none; font-weight:600; cursor:pointer;" onclick="showToast('Alert dispatched to Math/Chem department heads.')">Alert Faculty Leads</button></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 16px 8px; font-weight: 600;">STATS 401 Final + EECS 280 Project (Week 14)</td>
+              <td style="padding: 16px 8px; font-family: var(--mono);">184</td>
+              <td style="padding: 16px 8px;"><span class="conflict-badge warn">⚡ Warning</span></td>
+              <td style="padding: 16px 8px;"><button class="triage-btn" style="background:var(--bg2); color:var(--txt2); padding:6px 12px; border-radius:6px; border:1px solid var(--border); font-weight:600; cursor:pointer;" onclick="showToast('Advisors notified to send targeted outreach.')">Deploy Triage Email</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="toast"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
