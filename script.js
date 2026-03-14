@@ -49,17 +49,62 @@ const TL_OPT = [
   { week: 15, color: '#D85A30', course: 'HIST 215', title: 'Final essay — spread drafting', sub: ['Outline W13', 'Draft W14', 'Polish W15'] },
 ];
 
+// UMich LSA Risk Profile Data
+const UMICH_LSA_WEEKS = [2, 2, 3, 3, 4, 5, 7, 9, 6, 5, 8, 6, 5, 7, 4, 6];
+
+const UMICH_LSA_TL_RAW = [
+  { week: 2, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 1 — Limits & Continuity', sub: ['Read sections 2.1-2.3', 'Complete odd problems', 'Review limits concept'] },
+  { week: 3, color: '#CC6600', course: 'CHEM 210', title: 'Lab Report 1 — Experimental Design', sub: ['Collect data', 'Write procedure section', 'Analyze results'] },
+  { week: 4, color: '#0066CC', course: 'MATH 115', title: 'Quiz 1 — Derivatives', sub: ['Review derivative rules', 'Practice problems 3.1-3.8', 'Attend review session'] },
+  { week: 5, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 2 — Thermodynamics', sub: ['Read ch. 5-6', 'Calculate enthalpy changes', 'Complete worksheet'] },
+  { week: 6, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 3 — Integration', sub: ['Work through examples', 'Solve practice problems', 'Prepare for discussion'] },
+  { week: 7, color: '#CC6600', course: 'CHEM 210', title: '⚠ Midterm Exam Preparation', sub: ['Review all past labs', 'Study thermodynamics', 'Take practice exam'] },
+  { week: 8, color: '#0066CC', course: 'MATH 115', title: '⚠ Midterm Exam', sub: ['Focus on derivatives & integrals', 'Arrive 15 min early', 'Show all work'] },
+  { week: 8, color: '#CC6600', course: 'CHEM 210', title: '⚠ Midterm Exam', sub: ['Comprehensive lab exam', 'Bring lab notebook', 'Know reaction mechanisms'] },
+  { week: 9, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 4 — Applications', sub: ['Optimization problems', 'Related rates', 'Real-world applications'] },
+  { week: 10, color: '#CC6600', course: 'CHEM 210', title: 'Lab Report 2 — Kinetics Study', sub: ['Collect kinetics data', 'Calculate rate constants', 'Analyze mechanism'] },
+  { week: 11, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 5 — Series & Sequences', sub: ['Convergence tests', 'Power series', 'Taylor series'] },
+  { week: 12, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 3 — Quantum & Spectroscopy', sub: ['Wave equations', 'Orbital diagrams', 'IR spectroscopy problems'] },
+  { week: 13, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 6 — Multivariable Calculus', sub: ['Partial derivatives', 'Gradient & directional derivatives', 'Practice multivariable'] },
+  { week: 14, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 4 — Equilibrium & pH', sub: ['Ka/Kb calculations', 'Buffer problems', 'Titration curves'] },
+  { week: 15, color: '#0066CC', course: 'MATH 115', title: '⚠ Final Exam Preparation', sub: ['Comprehensive review', 'Review all problem sets', 'Attend final review session'] },
+  { week: 16, color: '#CC6600', course: 'CHEM 210', title: '⚠ Final Exam', sub: ['Comprehensive exam', 'Know all reaction types', 'Lab practical included'] },
+];
+
+const UMICH_LSA_TL_OPT = [
+  { week: 2, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 1 — Limits & Continuity', sub: ['Read & work through examples together'] },
+  { week: 3, color: '#CC6600', course: 'CHEM 210', title: 'Lab Report 1 — Start early', sub: ['Begin data collection W2', 'Spread writing across week'] },
+  { week: 4, color: '#0066CC', course: 'MATH 115', title: 'Quiz 1 Prep — Derivatives', sub: ['Study in groups', 'Attend optional review'] },
+  { week: 5, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 2 — Thermodynamics', sub: ['Work in pairs', 'Check answers together'] },
+  { week: 6, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 3 — Integration', sub: ['Start W5 evening', 'Attend tutoring session'] },
+  { week: 6, color: '#CC6600', course: 'CHEM 210', title: 'Lab Report 2 — Draft due', sub: ['Finish data analysis', 'Begin writing'] },
+  { week: 7, color: '#0066CC', course: 'MATH 115', title: 'Midterm Prep — Derivatives & Integrals', sub: ['Final review W7 Tue', 'Exam W7 Thu'] },
+  { week: 7, color: '#CC6600', course: 'CHEM 210', title: 'Midterm Preparation', sub: ['Lab exam prep', 'Chemistry review'] },
+  { week: 8, color: '#0066CC', course: 'MATH 115', title: 'Post-Exam — Reset Schedule', sub: ['Recover & regroup'] },
+  { week: 9, color: '#CC6600', course: 'CHEM 210', title: 'Lab Work — Kinetics Study', sub: ['Balanced lab time'] },
+  { week: 10, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 4 — Applications', sub: ['Real-world connection'] },
+  { week: 11, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 3 — Quantum', sub: ['Visual learning approach'] },
+  { week: 12, color: '#0066CC', course: 'MATH 115', title: 'Problem Set 5 — Series & Sequences', sub: ['Pattern recognition focus'] },
+  { week: 13, color: '#CC6600', course: 'CHEM 210', title: 'Problem Set 4 — Equilibrium & pH', sub: ['Interactive problem solving'] },
+  { week: 15, color: '#0066CC', course: 'MATH 115', title: 'Final Exam Prep — Start Early', sub: ['2 weeks prep', 'Study groups W14-W16'] },
+  { week: 16, color: '#CC6600', course: 'CHEM 210', title: 'Final Exam Prep — Comprehensive', sub: ['Lab practical review'] },
+];
+
 // ── STATE ──
 let optimized = false;
 let scoreAnimated = false;
+let currentProfile = 'cs'; // Track which profile is being used
 
 // ── DEMO LOGIC ──
 function startSelectedDemo() {
   const profile = document.getElementById('demo-select').value;
+  currentProfile = profile; // Store the selected profile
+  localStorage.setItem('surviveProfile', profile); // Persist profile
+  
   let files = [];
   if (profile === 'cs') files = ['CS280_Syllabus.pdf', 'HIST215_Syllabus.pdf', 'STATS301_Fall2024.docx'];
   else if (profile === 'premed') files = ['CHEM201.pdf', 'BIO101.pdf', 'PHYS201.pdf', 'MATH110.pdf'];
-  else files = ['ENG101.pdf', 'ECON101.pdf', 'PSYCH100.pdf', 'SPAN101.pdf', 'ART101.pdf'];
+  else if (profile === 'umich-lsa') files = ['MATH115_Syllabus.pdf', 'CHEM210_Syllabus.pdf'];
   startLoading(files);
 }
 
@@ -94,8 +139,18 @@ function startLoading(fileNames) {
 
   setTimeout(() => {
     showScreen('dashboard-screen');
-    renderHeatmap(RAW_WEEKS, false);
-    renderTimeline(TL_RAW);
+    
+    // Select data based on profile
+    let weeksData = RAW_WEEKS;
+    let timelineData = TL_RAW;
+    
+    if (currentProfile === 'umich-lsa') {
+      weeksData = UMICH_LSA_WEEKS;
+      timelineData = UMICH_LSA_TL_RAW;
+    }
+    
+    renderHeatmap(weeksData, false);
+    renderTimeline(timelineData);
     animateScore(32, false);
   }, 3800);
 }
@@ -235,28 +290,51 @@ function toggleOptimize() {
   const btn = document.getElementById('optimize-btn');
   const label = document.getElementById('opt-label');
 
+  // Select optimized data based on profile
+  let optWeeksData = OPT_WEEKS;
+  let optTimelineData = TL_OPT;
+  
+  if (currentProfile === 'umich-lsa') {
+    optWeeksData = UMICH_LSA_WEEKS; // Could create separate OPT version if needed
+    optTimelineData = UMICH_LSA_TL_OPT;
+  }
+
   if (optimized) {
     btn.classList.add('optimized');
     label.textContent = 'Optimized ✓';
-    renderHeatmap(OPT_WEEKS, true);
-    renderTimeline(TL_OPT);
+    renderHeatmap(optWeeksData, true);
+    renderTimeline(optTimelineData);
     animateScore(78, true);
     // Mark conflict cards as resolved
     ['c1', 'c2', 'c3'].forEach(id => {
       const el = document.getElementById(id);
-      el.classList.add('resolved');
-      el.querySelector('.conflict-badge').textContent = '✓ Resolved';
-      el.querySelector('.conflict-badge').className = 'conflict-badge';
+      if (el) {
+        el.classList.add('resolved');
+        el.querySelector('.conflict-badge').textContent = '✓ Resolved';
+        el.querySelector('.conflict-badge').className = 'conflict-badge';
+      }
     });
   } else {
     btn.classList.remove('optimized');
     label.textContent = 'AI Schedule Optimizer';
-    renderHeatmap(RAW_WEEKS, false);
-    renderTimeline(TL_RAW);
+    
+    // Select raw data based on profile
+    let rawWeeksData = RAW_WEEKS;
+    let rawTimelineData = TL_RAW;
+    
+    if (currentProfile === 'umich-lsa') {
+      rawWeeksData = UMICH_LSA_WEEKS;
+      rawTimelineData = UMICH_LSA_TL_RAW;
+    }
+    
+    renderHeatmap(rawWeeksData, false);
+    renderTimeline(rawTimelineData);
     animateScore(32, false);
     ['c1', 'c2', 'c3'].forEach(id => {
       const el = document.getElementById(id);
-      el.classList.remove('resolved');
+      if (el) {
+        el.classList.remove('resolved');
+      }
     });
     document.getElementById('c1').querySelector('.conflict-badge').textContent = '⚠ Critical';
     document.getElementById('c1').querySelector('.conflict-badge').className = 'conflict-badge danger';
