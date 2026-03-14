@@ -1,0 +1,702 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red: #E24B4A; --red-light: #FCEBEB; --red-mid: #F09595;
+    --amber: #EF9F27; --amber-light: #FAEEDA;
+    --green: #3B6D11; --green-light: #EAF3DE; --green-mid: #97C459;
+    --blue: #185FA5; --blue-light: #E6F1FB; --blue-mid: #378ADD;
+    --gray: #5F5E5A; --gray-light: #F1EFE8;
+    --bg: var(--color-background-primary, #fff);
+    --bg2: var(--color-background-secondary, #f7f6f2);
+    --bg3: var(--color-background-tertiary, #efede8);
+    --txt: var(--color-text-primary, #1a1a18);
+    --txt2: var(--color-text-secondary, #5f5e5a);
+    --txt3: var(--color-text-tertiary, #888780);
+    --border: var(--color-border-tertiary, rgba(0,0,0,0.12));
+    --border2: var(--color-border-secondary, rgba(0,0,0,0.22));
+    --r: 10px; --r2: 14px;
+    --font: 'DM Sans', var(--font-sans, system-ui), sans-serif;
+    --mono: 'DM Mono', var(--font-mono, monospace);
+  }
+
+  body { font-family: var(--font); background: var(--bg3); color: var(--txt); min-height: 100vh; padding: 0; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── UPLOAD SCREEN ── */
+  #upload-screen {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px;
+    background: var(--bg3);
+  }
+  .upload-brand {
+    font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--txt3); margin-bottom: 40px;
+  }
+  .upload-headline {
+    font-size: clamp(28px, 5vw, 42px); font-weight: 600; text-align: center;
+    line-height: 1.15; color: var(--txt); max-width: 560px; margin-bottom: 12px;
+  }
+  .upload-sub {
+    font-size: 15px; color: var(--txt2); text-align: center; max-width: 400px; margin-bottom: 48px;
+  }
+  .drop-zone {
+    width: 100%; max-width: 560px;
+    border: 1.5px dashed var(--border2);
+    border-radius: 20px;
+    background: var(--bg);
+    padding: 56px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--blue-mid);
+    background: var(--blue-light);
+    transform: scale(1.01);
+  }
+  .drop-icon {
+    width: 52px; height: 52px; margin: 0 auto 16px;
+    background: var(--bg2); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .drop-label { font-size: 17px; font-weight: 500; color: var(--txt); margin-bottom: 6px; }
+  .drop-sub { font-size: 13px; color: var(--txt3); }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .try-sample {
+    margin-top: 20px;
+    font-size: 13px; color: var(--txt3);
+  }
+  .try-sample button {
+    background: none; border: none; padding: 0;
+    color: var(--blue-mid); font-size: 13px; font-family: var(--font);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .try-sample button:hover { color: var(--blue); }
+
+  /* ── LOADING SCREEN ── */
+  #loading-screen {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; background: var(--bg3);
+  }
+  .loading-files {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; max-width: 480px;
+  }
+  .loading-file-pill {
+    background: var(--bg); border: 0.5px solid var(--border); border-radius: 24px;
+    padding: 6px 14px; font-size: 13px; color: var(--txt2);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .loading-file-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green-mid); }
+  .loading-status-label {
+    font-size: 15px; font-weight: 500; color: var(--txt); margin-bottom: 20px; text-align: center;
+    min-height: 24px; transition: opacity 0.3s;
+  }
+  .progress-track {
+    width: 360px; max-width: 90vw; height: 5px;
+    background: var(--bg2); border-radius: 99px; overflow: hidden; margin-bottom: 16px;
+  }
+  .progress-fill {
+    height: 100%; background: var(--blue-mid); border-radius: 99px;
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+  .progress-pct { font-size: 12px; color: var(--txt3); font-family: var(--mono); }
+
+  /* ── DASHBOARD ── */
+  #dashboard-screen { padding: 0; background: var(--bg3); }
+  .dash-nav {
+    background: var(--bg); border-bottom: 0.5px solid var(--border);
+    padding: 0 24px; height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .dash-nav-brand { font-size: 14px; font-weight: 600; color: var(--txt); letter-spacing: -0.01em; }
+  .dash-nav-brand span { color: var(--blue-mid); }
+  .dash-nav-right { display: flex; align-items: center; gap: 10px; }
+  .nav-pill {
+    font-size: 12px; font-weight: 500; padding: 5px 12px;
+    border-radius: 99px; border: 0.5px solid var(--border2);
+    background: var(--bg); color: var(--txt2); cursor: pointer; font-family: var(--font);
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-pill:hover { background: var(--bg2); color: var(--txt); }
+  .optimize-btn {
+    font-size: 12px; font-weight: 600; padding: 7px 16px;
+    border-radius: 99px; border: none;
+    background: var(--red); color: #fff; cursor: pointer; font-family: var(--font);
+    transition: background 0.15s, transform 0.1s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .optimize-btn:hover { background: #c43a39; transform: scale(1.02); }
+  .optimize-btn.optimized { background: var(--green); }
+  .optimize-btn.optimized:hover { background: var(--green-mid); }
+  .btn-spark { font-size: 14px; }
+
+  .dash-body { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+  /* SURVIVAL SCORE */
+  .score-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .score-card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--r2); padding: 16px 20px;
+    flex: 0 0 auto;
+  }
+  .score-main-card {
+    display: flex; align-items: center; gap: 16px; flex: 0 0 auto;
+  }
+  .score-ring-wrap { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+  .score-ring-wrap svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+  .score-ring-bg { fill: none; stroke: var(--bg2); stroke-width: 7; }
+  .score-ring-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.6s; }
+  .score-ring-num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 600; font-family: var(--mono);
+  }
+  .score-card-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--txt3); margin-bottom: 4px; }
+  .score-card-val { font-size: 22px; font-weight: 600; font-family: var(--mono); color: var(--txt); }
+  .score-card-sub { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+  .score-cards-mini { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* CONFLICT CALLOUTS */
+  .conflicts { margin-bottom: 20px; }
+  .conflict-card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--r2); padding: 14px 18px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: opacity 0.4s;
+  }
+  .conflict-card.resolved {
+    opacity: 0.45;
+    border-color: var(--border);
+  }
+  .conflict-card.resolved .conflict-badge { background: var(--green-light); color: var(--green); }
+  .conflict-badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+  }
+  .conflict-badge.danger { background: #FCEBEB; color: #A32D2D; }
+  .conflict-badge.warn { background: var(--amber-light); color: #854F0B; }
+  .conflict-text { font-size: 13px; color: var(--txt2); line-height: 1.5; }
+  .conflict-text strong { color: var(--txt); font-weight: 500; }
+
+  /* HEATMAP */
+  .section { margin-bottom: 24px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title { font-size: 14px; font-weight: 600; color: var(--txt); }
+  .section-sub { font-size: 12px; color: var(--txt3); }
+  .heatmap-bars {
+    display: flex; align-items: flex-end; gap: 4px; height: 120px;
+    padding-bottom: 24px; position: relative;
+  }
+  .heatmap-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+  .heatmap-bar {
+    width: 100%; border-radius: 5px 5px 0 0; transition: height 0.7s cubic-bezier(.4,0,.2,1), background 0.6s;
+    cursor: pointer; position: relative;
+    min-height: 4px;
+  }
+  .heatmap-bar:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--txt); color: var(--bg); font-size: 11px; padding: 4px 8px;
+    border-radius: 5px; white-space: nowrap; pointer-events: none; z-index: 10;
+    font-family: var(--mono);
+  }
+  .heatmap-label { font-size: 10px; color: var(--txt3); font-family: var(--mono); }
+  .heatmap-axis {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: var(--border);
+  }
+
+  /* GRID */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* TIMELINE */
+  .timeline-list { list-style: none; }
+  .timeline-item {
+    display: flex; gap: 12px; padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+    transition: background 0.15s;
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .tl-week {
+    font-size: 11px; font-weight: 600; font-family: var(--mono);
+    color: var(--txt3); min-width: 30px; padding-top: 1px;
+  }
+  .tl-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  }
+  .tl-content { flex: 1; }
+  .tl-title { font-size: 13px; font-weight: 500; color: var(--txt); line-height: 1.4; }
+  .tl-meta { font-size: 11px; color: var(--txt3); margin-top: 2px; }
+  .tl-sub-tasks { margin-top: 6px; list-style: none; }
+  .tl-sub-task {
+    font-size: 11px; color: var(--txt2); padding: 3px 0 3px 12px;
+    border-left: 1.5px solid var(--border2); margin-left: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tl-sub-task .sub-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--txt3); flex-shrink: 0; }
+  .tl-course-tag {
+    display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 99px; margin-right: 4px; vertical-align: middle;
+  }
+
+  /* EXPORT TOAST */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--txt); color: var(--bg);
+    font-size: 13px; padding: 10px 18px; border-radius: var(--r);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none; z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  .export-btn {
+    font-size: 12px; font-weight: 500; padding: 5px 12px;
+    border-radius: 99px; border: 0.5px solid var(--border2);
+    background: var(--bg); color: var(--txt2); cursor: pointer; font-family: var(--font);
+    transition: background 0.15s;
+  }
+  .export-btn:hover { background: var(--bg2); }
+
+  .card-inner {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--r2); padding: 18px 20px; height: 100%;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── UPLOAD SCREEN ── -->
+<div id="upload-screen" class="screen active">
+  <div class="upload-brand">Survive the Semester</div>
+  <h1 class="upload-headline">Turn your syllabi into a survival plan.</h1>
+  <p class="upload-sub">Drop your course syllabi and let AI map out every deadline, danger zone, and study sprint.</p>
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" multiple accept=".pdf,.docx,.txt" id="file-input">
+    <div class="drop-icon">📄</div>
+    <div class="drop-label">Drop all your syllabi here</div>
+    <div class="drop-sub">PDF, Word, or plain text &nbsp;·&nbsp; Multiple files welcome</div>
+  </div>
+  <p class="try-sample">No files? <button onclick="startWithSample()">Try with sample syllabi →</button></p>
+</div>
+
+<!-- ── LOADING SCREEN ── -->
+<div id="loading-screen" class="screen">
+  <div class="loading-files" id="loading-pills"></div>
+  <div class="loading-status-label" id="loading-label">Parsing your syllabi…</div>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="progress-pct" id="progress-pct">0%</div>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dashboard-screen" class="screen">
+  <nav class="dash-nav">
+    <div class="dash-nav-brand">survive<span>.</span></div>
+    <div class="dash-nav-right">
+      <button class="nav-pill" onclick="showToast('📅 Exporting to Google Calendar…')">Export to Google Cal</button>
+      <button class="optimize-btn" id="optimize-btn" onclick="toggleOptimize()">
+        <span class="btn-spark">✦</span> <span id="opt-label">AI Schedule Optimizer</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="dash-body">
+
+    <!-- SURVIVAL SCORE -->
+    <div class="score-row">
+      <div class="score-card score-main-card">
+        <div class="score-ring-wrap">
+          <svg viewBox="0 0 72 72">
+            <circle class="score-ring-bg" cx="36" cy="36" r="29"/>
+            <circle class="score-ring-fill" id="score-ring" cx="36" cy="36" r="29"
+              stroke-dasharray="182" stroke-dashoffset="182"/>
+          </svg>
+          <div class="score-ring-num" id="score-num" style="color:var(--red)">—</div>
+        </div>
+        <div>
+          <div class="score-card-label">Survival Score</div>
+          <div style="font-size:13px;color:var(--txt2);line-height:1.5;max-width:180px" id="score-desc">Your semester stress level at a glance.</div>
+        </div>
+      </div>
+      <div class="score-cards-mini">
+        <div class="score-card">
+          <div class="score-card-label">Total Deadlines</div>
+          <div class="score-card-val">24</div>
+          <div class="score-card-sub">across 3 courses</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Danger Weeks</div>
+          <div class="score-card-val" id="danger-count">3</div>
+          <div class="score-card-sub" id="danger-sub">high-collision weeks</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Study Tasks</div>
+          <div class="score-card-val">61</div>
+          <div class="score-card-sub">AI-generated subtasks</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFLICT CALLOUTS -->
+    <div class="conflicts" id="conflicts-section">
+      <div class="conflict-card" id="c1">
+        <span class="conflict-badge danger">⚠ Critical</span>
+        <div class="conflict-text"><strong>Week 8 — Triple collision:</strong> CS Midterm + History 10-page paper + Stats Problem Set all due within 48 hours. This is your hardest week.</div>
+      </div>
+      <div class="conflict-card" id="c2">
+        <span class="conflict-badge warn">⚡ Warning</span>
+        <div class="conflict-text"><strong>Week 11 — Back-to-back crunch:</strong> Lit review due Monday, group project milestone Friday. Only 4 days to pivot between two completely different courses.</div>
+      </div>
+      <div class="conflict-card" id="c3">
+        <span class="conflict-badge warn">⚡ Warning</span>
+        <div class="conflict-text"><strong>Week 14 — Finals ramp-up:</strong> CS final project + Stats final exam fall in the same 72-hour window before the official finals period begins.</div>
+      </div>
+    </div>
+
+    <!-- HEATMAP -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Workload Heatmap — 16-Week Semester</div>
+          <div class="section-sub">Bar height = combined deadline pressure per week</div>
+        </div>
+      </div>
+      <div class="card-inner" style="padding:18px 16px 8px">
+        <div class="heatmap-bars" id="heatmap"></div>
+      </div>
+    </div>
+
+    <!-- TIMELINE + COURSES -->
+    <div class="two-col">
+      <div>
+        <div class="section-header">
+          <div class="section-title">Master Timeline</div>
+          <button class="export-btn" onclick="showToast('📋 Copied to clipboard!')">Copy all</button>
+        </div>
+        <div class="card-inner" style="max-height:520px;overflow-y:auto;padding:10px 16px">
+          <ul class="timeline-list" id="timeline"></ul>
+        </div>
+      </div>
+      <div>
+        <div class="section-header">
+          <div class="section-title">Courses Detected</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="card-inner">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="width:10px;height:10px;border-radius:50%;background:#378ADD;flex-shrink:0"></div>
+              <div style="font-size:14px;font-weight:600">CS 280 — Algorithms</div>
+            </div>
+            <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Chen &nbsp;·&nbsp; MWF 10–11am<br>7 assignments &nbsp;·&nbsp; 2 midterms &nbsp;·&nbsp; 1 final project</div>
+          </div>
+          <div class="card-inner">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="width:10px;height:10px;border-radius:50%;background:#D85A30;flex-shrink:0"></div>
+              <div style="font-size:14px;font-weight:600">HIST 215 — Modern Europe</div>
+            </div>
+            <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Okonkwo &nbsp;·&nbsp; TTh 2–3:30pm<br>3 papers &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final essay</div>
+          </div>
+          <div class="card-inner">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0"></div>
+              <div style="font-size:14px;font-weight:600">STATS 301 — Applied Stats</div>
+            </div>
+            <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Reyes &nbsp;·&nbsp; MWF 1–2pm<br>8 problem sets &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final exam</div>
+          </div>
+          <div class="card-inner" style="background:var(--bg2)">
+            <div style="font-size:12px;color:var(--txt3);text-align:center;padding:4px 0">
+              ✦ AI generated 61 micro-tasks from your syllabi
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── DATA ──
+
+const COURSES = [
+  { id:'cs',   label:'CS 280',   color:'#378ADD' },
+  { id:'hist', label:'HIST 215', color:'#D85A30' },
+  { id:'stats',label:'STATS 301',color:'#1D9E75' },
+];
+
+// Raw heatmap data (0-10 stress scale, 16 weeks)
+const RAW_WEEKS = [1,1,2,2,3,4,6,10,3,4,8,5,4,9,3,5];
+// Optimized (flattened) heatmap data
+const OPT_WEEKS = [2,2,3,3,4,4,5,5,5,4,5,4,4,5,4,5];
+
+const TL_RAW = [
+  { week:2,  color:'#378ADD', course:'CS 280',   title:'HW 1 — Sorting algorithms',       sub:['Review lecture notes (W1)','Complete problems 1-3','Write up solutions'] },
+  { week:3,  color:'#1D9E75', course:'STATS 301', title:'Problem Set 1',                   sub:['Read ch. 2-3','Work through examples','Type up PS'] },
+  { week:4,  color:'#D85A30', course:'HIST 215',  title:'Reading quiz — WWI causes',       sub:['Read MacMillan ch. 4-5','Take practice quiz'] },
+  { week:5,  color:'#378ADD', course:'CS 280',   title:'HW 2 — Dynamic programming',      sub:['Review DP slides','Attempt problems 1-4','Debug solutions'] },
+  { week:6,  color:'#1D9E75', course:'STATS 301', title:'Problem Set 2 — Regression',      sub:['Read ch. 5','Run R examples','Write up'] },
+  { week:7,  color:'#D85A30', course:'HIST 215',  title:'Short paper — Versailles Treaty', sub:['Outline by W6 Mon','Draft by W6 Wed','Revise & submit'] },
+  { week:8,  color:'#378ADD', course:'CS 280',   title:'⚠ MIDTERM EXAM',                  sub:['Study sessions W7','Review HW 1-2','Practice past exams'] },
+  { week:8,  color:'#D85A30', course:'HIST 215',  title:'⚠ 10-page Research Paper DUE',   sub:['Outline W6','Draft W7 Mon','Final revision W7 Thu'] },
+  { week:8,  color:'#1D9E75', course:'STATS 301', title:'⚠ Problem Set 4 — ANOVA',         sub:['Read ch. 8','Complete PS W7'] },
+  { week:10, color:'#378ADD', course:'CS 280',   title:'HW 3 — Graph algorithms',         sub:['Review BFS/DFS','Implement in code','Test edge cases'] },
+  { week:11, color:'#D85A30', course:'HIST 215',  title:'Lit review due',                  sub:['Gather 8 sources','Write annotations','Draft review'] },
+  { week:11, color:'#378ADD', course:'CS 280',   title:'Group project milestone',          sub:['Sync with team','Submit progress doc'] },
+  { week:13, color:'#1D9E75', course:'STATS 301', title:'Problem Set 6 — Time series',     sub:['Read ch. 12','Code examples in R'] },
+  { week:14, color:'#378ADD', course:'CS 280',   title:'⚠ Final project DUE',             sub:['Full draft W13','Code review W13','Final polish W14'] },
+  { week:14, color:'#1D9E75', course:'STATS 301', title:'⚠ FINAL EXAM',                   sub:['Review all PS','Study sessions W13','Practice problems'] },
+  { week:15, color:'#D85A30', course:'HIST 215',  title:'Final essay — 15 pages',          sub:['Outline W13','Draft W14','Revise & submit W15'] },
+];
+
+const TL_OPT = [
+  { week:2,  color:'#378ADD', course:'CS 280',   title:'HW 1 — Sorting algorithms',       sub:['Review lecture notes','Spread across 3 sessions','Submit'] },
+  { week:3,  color:'#1D9E75', course:'STATS 301', title:'Problem Set 1',                   sub:['2 sessions this week','Type up solutions'] },
+  { week:4,  color:'#D85A30', course:'HIST 215',  title:'Reading quiz — WWI causes',       sub:['Read + practice quiz'] },
+  { week:5,  color:'#D85A30', course:'HIST 215',  title:'Begin research paper outline early',sub:['Start sources now','Outline draft'] },
+  { week:6,  color:'#378ADD', course:'CS 280',   title:'HW 2 — Dynamic programming',      sub:['Start W5 Thu (avoid W8 crunch)','Debug early'] },
+  { week:6,  color:'#1D9E75', course:'STATS 301', title:'Problem Set 2 — start early',    sub:['Read ch. 5 over weekend','Begin problems W6 Mon'] },
+  { week:7,  color:'#D85A30', course:'HIST 215',  title:'Research paper DRAFT DUE (moved earlier)', sub:['Complete W7 Mon','Revise by Wed'] },
+  { week:7,  color:'#1D9E75', course:'STATS 301', title:'Problem Set 3 (moved up from W8)',sub:['Smooth the W8 crunch','Submit W7 Fri'] },
+  { week:8,  color:'#378ADD', course:'CS 280',   title:'MIDTERM EXAM',                    sub:['Focused prep — other work shifted out'] },
+  { week:9,  color:'#D85A30', course:'HIST 215',  title:'Research paper revisions',        sub:['Polish & submit final version'] },
+  { week:10, color:'#378ADD', course:'CS 280',   title:'HW 3 — Graph algorithms',         sub:['Start W9 Thu','Test edge cases W10'] },
+  { week:11, color:'#D85A30', course:'HIST 215',  title:'Lit review + project milestone', sub:['Split work evenly this week'] },
+  { week:12, color:'#1D9E75', course:'STATS 301', title:'Problem Set 5 + 6 spread',       sub:['One per week (not both W13)'] },
+  { week:13, color:'#378ADD', course:'CS 280',   title:'Final project — draft milestone', sub:['Code review session','Submit progress'] },
+  { week:14, color:'#1D9E75', course:'STATS 301', title:'FINAL EXAM PREP (started earlier)',sub:['2 weeks of review instead of 1'] },
+  { week:15, color:'#D85A30', course:'HIST 215',  title:'Final essay — spread drafting',  sub:['Outline W13','Draft W14','Polish W15'] },
+];
+
+// ── STATE ──
+let optimized = false;
+let scoreAnimated = false;
+
+// ── UPLOAD LOGIC ──
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) startLoading(files.map(f => f.name));
+});
+fileInput.addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  if (files.length) startLoading(files.map(f => f.name));
+});
+
+function startWithSample() {
+  startLoading(['CS280_Syllabus_F24.pdf', 'HIST215_Syllabus.pdf', 'STATS301_Fall2024.docx']);
+}
+
+// ── LOADING SEQUENCE ──
+function startLoading(fileNames) {
+  showScreen('loading-screen');
+  const pills = document.getElementById('loading-pills');
+  pills.innerHTML = fileNames.map(n =>
+    `<div class="loading-file-pill"><div class="dot"></div>${n}</div>`
+  ).join('');
+
+  const steps = [
+    [0,   0,  'Reading your syllabi…'],
+    [600, 25, 'Parsing deadlines and assignments…'],
+    [1200,52, 'Identifying collision points…'],
+    [1900,75, 'Building your survival calendar…'],
+    [2500,90, 'Generating micro-tasks…'],
+    [3200,100,'Your survival plan is ready ✓'],
+  ];
+
+  const fill = document.getElementById('progress-fill');
+  const pct = document.getElementById('progress-pct');
+  const label = document.getElementById('loading-label');
+
+  steps.forEach(([delay, val, text]) => {
+    setTimeout(() => {
+      fill.style.width = val + '%';
+      pct.textContent = val + '%';
+      label.textContent = text;
+    }, delay);
+  });
+
+  setTimeout(() => {
+    showScreen('dashboard-screen');
+    renderHeatmap(RAW_WEEKS, false);
+    renderTimeline(TL_RAW);
+    animateScore(32, false);
+  }, 3800);
+}
+
+// ── SCREEN SWITCHING ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── HEATMAP ──
+function getBarColor(val, opt) {
+  if (opt) {
+    if (val <= 4) return '#97C459';
+    if (val <= 6) return '#EF9F27';
+    return '#63991a';
+  }
+  if (val >= 9) return '#E24B4A';
+  if (val >= 7) return '#EF9F27';
+  if (val >= 5) return '#BA7517';
+  return '#B4B2A9';
+}
+
+function renderHeatmap(data, opt) {
+  const container = document.getElementById('heatmap');
+  const max = Math.max(...data);
+  container.innerHTML = '<div class="heatmap-axis"></div>';
+  data.forEach((val, i) => {
+    const pct = (val / max) * 100;
+    const color = getBarColor(val, opt);
+    const wrap = document.createElement('div');
+    wrap.className = 'heatmap-bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'heatmap-bar';
+    bar.style.cssText = `height:0%;background:${color};`;
+    bar.setAttribute('data-tip', `W${i+1}: ${val}/10`);
+    wrap.appendChild(bar);
+    const lbl = document.createElement('div');
+    lbl.className = 'heatmap-label';
+    lbl.textContent = `W${i+1}`;
+    wrap.appendChild(lbl);
+    container.appendChild(wrap);
+    setTimeout(() => { bar.style.height = pct + '%'; }, 80 + i * 35);
+  });
+}
+
+// ── TIMELINE ──
+function renderTimeline(items) {
+  const list = document.getElementById('timeline');
+  list.innerHTML = '';
+  items.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'timeline-item';
+    li.innerHTML = `
+      <div class="tl-week">W${item.week}</div>
+      <div class="tl-dot" style="background:${item.color}"></div>
+      <div class="tl-content">
+        <div class="tl-title">
+          <span class="tl-course-tag" style="background:${item.color}22;color:${item.color}">${item.course}</span>
+          ${item.title}
+        </div>
+        <ul class="tl-sub-tasks">
+          ${item.sub.map(s => `<li class="tl-sub-task"><div class="sub-dot"></div>${s}</li>`).join('')}
+        </ul>
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+// ── SURVIVAL SCORE ──
+function animateScore(target, isOpt) {
+  const ring = document.getElementById('score-ring');
+  const num = document.getElementById('score-num');
+  const desc = document.getElementById('score-desc');
+  const dangerCount = document.getElementById('danger-count');
+  const dangerSub = document.getElementById('danger-sub');
+  const circ = 182;
+
+  if (isOpt) {
+    ring.style.stroke = '#639922';
+    num.style.color = '#3B6D11';
+    desc.textContent = 'Optimized! Load distributed evenly.';
+    dangerCount.textContent = '0';
+    dangerSub.textContent = 'conflicts resolved';
+  } else {
+    ring.style.stroke = '#E24B4A';
+    num.style.color = '#A32D2D';
+    desc.textContent = 'High risk — multiple collision weeks detected.';
+    dangerCount.textContent = '3';
+    dangerSub.textContent = 'high-collision weeks';
+  }
+
+  const offset = circ - (target / 100) * circ;
+  setTimeout(() => { ring.style.strokeDashoffset = offset; }, 100);
+
+  let cur = 0;
+  const step = target / 40;
+  const iv = setInterval(() => {
+    cur = Math.min(cur + step, target);
+    num.textContent = Math.round(cur);
+    if (cur >= target) clearInterval(iv);
+  }, 30);
+}
+
+// ── OPTIMIZE TOGGLE ──
+function toggleOptimize() {
+  optimized = !optimized;
+  const btn = document.getElementById('optimize-btn');
+  const label = document.getElementById('opt-label');
+
+  if (optimized) {
+    btn.classList.add('optimized');
+    label.textContent = 'Optimized ✓';
+    renderHeatmap(OPT_WEEKS, true);
+    renderTimeline(TL_OPT);
+    animateScore(78, true);
+    // Mark conflict cards as resolved
+    ['c1','c2','c3'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.add('resolved');
+      el.querySelector('.conflict-badge').textContent = '✓ Resolved';
+      el.querySelector('.conflict-badge').className = 'conflict-badge';
+    });
+  } else {
+    btn.classList.remove('optimized');
+    label.textContent = 'AI Schedule Optimizer';
+    renderHeatmap(RAW_WEEKS, false);
+    renderTimeline(TL_RAW);
+    animateScore(32, false);
+    ['c1','c2','c3'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('resolved');
+    });
+    document.getElementById('c1').querySelector('.conflict-badge').textContent = '⚠ Critical';
+    document.getElementById('c1').querySelector('.conflict-badge').className = 'conflict-badge danger';
+    document.getElementById('c2').querySelector('.conflict-badge').textContent = '⚡ Warning';
+    document.getElementById('c2').querySelector('.conflict-badge').className = 'conflict-badge warn';
+    document.getElementById('c3').querySelector('.conflict-badge').textContent = '⚡ Warning';
+    document.getElementById('c3').querySelector('.conflict-badge').className = 'conflict-badge warn';
+  }
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
