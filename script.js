@@ -246,11 +246,28 @@ async function handleFileUpload() {
     pct.textContent = Math.round((i / n) * 50) + '%';
 
     try {
-      const text = await extractText(file);
-      const items = parseSyllabusText(text, course);
-      allItems = allItems.concat(items);
+      // Use the backend API to parse the syllabus
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/parse-syllabus', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success && result.items) {
+        allItems = allItems.concat(result.items);
+      } else {
+        throw new Error(result.error || 'Failed to parse syllabus');
+      }
     } catch (e) {
       console.warn('Parse error for', file.name, e);
+      const course = deriveCourseFromFilename(file.name);
       allItems.push({
         week: 4 + i * 3,
         color: ['#378ADD', '#D85A30', '#1D9E75', '#0066CC'][i % 4],
