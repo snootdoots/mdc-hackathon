@@ -245,3 +245,78 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2400);
 }
+
+// ── CALENDAR DOWNLOAD ──
+function downloadCalendar() {
+  const today = new Date();
+  const nextWeekStart = new Date(today);
+  nextWeekStart.setDate(today.getDate() + (1 - today.getDay())); // Start of next week (Sunday)
+  
+  // Helper function to format dates as iCalendar format (YYYYMMDD)
+  function formatDateICS(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+  
+  // Helper function to format times for iCalendar
+  function formatTimeICS(date) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}${minutes}${seconds}`;
+  }
+  
+  // Build iCalendar string
+  let icsContent = 'BEGIN:VCALENDAR\r\n';
+  icsContent += 'VERSION:2.0\r\n';
+  icsContent += 'PRODID:-//Survive the Semester//EN\r\n';
+  icsContent += 'CALSCALE:GREGORIAN\r\n';
+  icsContent += 'METHOD:PUBLISH\r\n';
+  
+  // Add each task as an event
+  TL_OPT.forEach((task, index) => {
+    // Calculate date: each week maps to a day next week
+    const eventDate = new Date(nextWeekStart);
+    eventDate.setDate(nextWeekStart.getDate() + (task.week - 1));
+    
+    // Start at 9 AM for the event
+    eventDate.setHours(9, 0, 0, 0);
+    
+    // Create unique ID
+    const uid = `survive-${index}-${Date.now()}@surviveplan.local`;
+    
+    // Format dates
+    const dtStart = formatDateICS(eventDate);
+    const dtEnd = new Date(eventDate);
+    dtEnd.setHours(10, 0, 0, 0);
+    const dtEndFormatted = formatDateICS(dtEnd);
+    
+    // Add event
+    icsContent += 'BEGIN:VEVENT\r\n';
+    icsContent += `UID:${uid}\r\n`;
+    icsContent += `DTSTAMP:${formatDateICS(new Date())}T${formatTimeICS(new Date())}\r\n`;
+    icsContent += `DTSTART:${dtStart}T090000\r\n`;
+    icsContent += `DTEND:${dtEndFormatted}T100000\r\n`;
+    icsContent += `SUMMARY:${task.title} (${task.course})\r\n`;
+    icsContent += `DESCRIPTION:${task.sub.join(', ')}\r\n`;
+    icsContent += 'STATUS:CONFIRMED\r\n';
+    icsContent += 'END:VEVENT\r\n';
+  });
+  
+  icsContent += 'END:VCALENDAR\r\n';
+  
+  // Create blob and download
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'survive_semester_plan.ics';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+  
+  // Show toast notification
+  showToast('📅 Calendar file downloaded!');
+}

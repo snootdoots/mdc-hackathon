@@ -1,187 +1,322 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-</head>
+  <body>
+    <!-- ── START SCREEN ── -->
+    <div id="upload-screen" class="screen active">
+      <div class="upload-brand">Survive the Semester</div>
+      <h1 class="upload-headline">Turn your syllabi into a survival plan.</h1>
+      <p class="upload-sub">
+        Select a demo student profile to let AI map out every deadline, danger
+        zone, and study sprint.
+      </p>
 
-<body>
-
-  <!-- ── START SCREEN ── -->
-  <div id="upload-screen" class="screen active">
-    <div class="upload-brand">Survive the Semester</div>
-    <h1 class="upload-headline">Turn your syllabi into a survival plan.</h1>
-    <p class="upload-sub">Select a demo student profile to let AI map out every deadline, danger zone, and study sprint.</p>
-    
-    <div class="demo-controls">
-      <select class="demo-select" id="demo-select">
-        <option value="cs">💻 Junior CS Major (3 Courses)</option>
-        <option value="premed">🩺 Pre-Med Sophomore (4 Courses)</option>
-        <option value="freshman">🎒 Freshman Fall (5 Courses)</option>
-      </select>
-      <button class="demo-btn" onclick="startSelectedDemo()">Generate Survival Plan →</button>
-    </div>
-  </div>
-
-  <!-- ── LOADING SCREEN ── -->
-  <div id="loading-screen" class="screen">
-    <div class="loading-files" id="loading-pills"></div>
-    <div class="loading-status-label" id="loading-label">Parsing your syllabi…</div>
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
-    <div class="progress-pct" id="progress-pct">0%</div>
-  </div>
-
-  <!-- ── DASHBOARD ── -->
-  <div id="dashboard-screen" class="screen">
-    <nav class="dash-nav">
-      <div class="dash-nav-brand">survive<span>.</span></div>
-      <div class="dash-nav-right">
-        <button class="nav-pill" onclick="showToast('📅 Exporting to Google Calendar…')">Export to Google Cal</button>
-        <button class="optimize-btn" id="optimize-btn" onclick="toggleOptimize()">
-          <span class="btn-spark">✦</span> <span id="opt-label">AI Schedule Optimizer</span>
+      <div class="demo-controls">
+        <select class="demo-select" id="demo-select">
+          <option value="cs">💻 Junior CS Major (3 Courses)</option>
+          <option value="premed">🩺 Pre-Med Sophomore (4 Courses)</option>
+          <option value="freshman">🎒 Freshman Fall (5 Courses)</option>
+        </select>
+        <button class="demo-btn" onclick="startSelectedDemo()">
+          Generate Survival Plan →
         </button>
       </div>
-    </nav>
-
-    <div class="dash-body">
-
-      <!-- SLIDE 1: OVERVIEW -->
-      <div class="dash-slide">
-        <!-- SURVIVAL SCORE -->
-        <div class="score-row">
-          <div class="score-card score-main-card">
-            <div class="score-ring-wrap">
-              <svg viewBox="0 0 72 72">
-                <circle class="score-ring-bg" cx="36" cy="36" r="29" />
-                <circle class="score-ring-fill" id="score-ring" cx="36" cy="36" r="29" stroke-dasharray="182"
-                  stroke-dashoffset="182" />
-              </svg>
-              <div class="score-ring-num" id="score-num" style="color:var(--red)">—</div>
-            </div>
-            <div>
-              <div class="score-card-label">Survival Score</div>
-              <div style="font-size:13px;color:var(--txt2);line-height:1.5;max-width:180px" id="score-desc">Your
-                semester stress level at a glance.</div>
-            </div>
-          </div>
-          <div class="score-cards-mini">
-            <div class="score-card">
-              <div class="score-card-label">Total Deadlines</div>
-              <div class="score-card-val">24</div>
-              <div class="score-card-sub">across 3 courses</div>
-            </div>
-            <div class="score-card">
-              <div class="score-card-label">Danger Weeks</div>
-              <div class="score-card-val" id="danger-count">3</div>
-              <div class="score-card-sub" id="danger-sub">high-collision weeks</div>
-            </div>
-            <div class="score-card">
-              <div class="score-card-label">Study Tasks</div>
-              <div class="score-card-val">61</div>
-              <div class="score-card-sub">AI-generated subtasks</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CONFLICT CALLOUTS -->
-        <div class="conflicts" id="conflicts-section">
-          <div class="conflict-card" id="c1">
-            <span class="conflict-badge danger">⚠ Critical</span>
-            <div class="conflict-text"><strong>Week 8 — Triple collision:</strong> CS Midterm + History 10-page paper +
-              Stats Problem Set all due within 48 hours. This is your hardest week.</div>
-          </div>
-          <div class="conflict-card" id="c2">
-            <span class="conflict-badge warn">⚡ Warning</span>
-            <div class="conflict-text"><strong>Week 11 — Back-to-back crunch:</strong> Lit review due Monday, group
-              project milestone Friday. Only 4 days to pivot between two completely different courses.</div>
-          </div>
-          <div class="conflict-card" id="c3">
-            <span class="conflict-badge warn">⚡ Warning</span>
-            <div class="conflict-text"><strong>Week 14 — Finals ramp-up:</strong> CS final project + Stats final exam
-              fall in the same 72-hour window before the official finals period begins.</div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- SLIDE 2: HEATMAP -->
-      <div class="dash-slide">
-        <!-- HEATMAP -->
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <div class="section-title">Workload Heatmap — 16-Week Semester</div>
-              <div class="section-sub">Bar height = combined deadline pressure per week</div>
-            </div>
-          </div>
-          <div class="card-inner" style="padding:18px 16px 8px">
-            <div class="heatmap-bars" id="heatmap"></div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- SLIDE 3: TIMELINE -->
-      <div class="dash-slide">
-        <!-- TIMELINE + COURSES -->
-        <div class="two-col">
-          <div>
-            <div class="section-header">
-              <div class="section-title">Master Timeline</div>
-              <button class="export-btn" onclick="showToast('📋 Copied to clipboard!')">Copy all</button>
-            </div>
-            <div class="card-inner" style="max-height:520px;overflow-y:auto;padding:10px 16px">
-              <ul class="timeline-list" id="timeline"></ul>
-            </div>
-          </div>
-          <div>
-            <div class="section-header">
-              <div class="section-title">Courses Detected</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div class="card-inner">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div style="width:10px;height:10px;border-radius:50%;background:#378ADD;flex-shrink:0"></div>
-                  <div style="font-size:14px;font-weight:600">CS 280 — Algorithms</div>
-                </div>
-                <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Chen &nbsp;·&nbsp; MWF 10–11am<br>7
-                  assignments &nbsp;·&nbsp; 2 midterms &nbsp;·&nbsp; 1 final project</div>
-              </div>
-              <div class="card-inner">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div style="width:10px;height:10px;border-radius:50%;background:#D85A30;flex-shrink:0"></div>
-                  <div style="font-size:14px;font-weight:600">HIST 215 — Modern Europe</div>
-                </div>
-                <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Okonkwo &nbsp;·&nbsp; TTh
-                  2–3:30pm<br>3 papers &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final essay</div>
-              </div>
-              <div class="card-inner">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0"></div>
-                  <div style="font-size:14px;font-weight:600">STATS 301 — Applied Stats</div>
-                </div>
-                <div style="font-size:12px;color:var(--txt3);line-height:1.6">Prof. Reyes &nbsp;·&nbsp; MWF 1–2pm<br>8
-                  problem sets &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final exam</div>
-              </div>
-              <div class="card-inner" style="background:var(--bg2)">
-                <div style="font-size:12px;color:var(--txt3);text-align:center;padding:4px 0">
-                  ✦ AI generated 61 micro-tasks from your syllabi
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div> <!-- End Slide 3 -->
-
     </div>
-  </div>
 
-  <div id="toast"></div>
+    <!-- ── LOADING SCREEN ── -->
+    <div id="loading-screen" class="screen">
+      <div class="loading-files" id="loading-pills"></div>
+      <div class="loading-status-label" id="loading-label">
+        Parsing your syllabi…
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-pct" id="progress-pct">0%</div>
+    </div>
 
-  <script src="script.js"></script>
-</body>
+    <!-- ── DASHBOARD ── -->
+    <div id="dashboard-screen" class="screen">
+      <nav class="dash-nav">
+        <div class="dash-nav-brand">survive<span>.</span></div>
+        <div class="dash-nav-right">
+          <button class="nav-pill" onclick="downloadCalendar()">
+            Export to Google Cal
+          </button>
+          <button
+            class="optimize-btn"
+            id="optimize-btn"
+            onclick="toggleOptimize()"
+          >
+            <span class="btn-spark">✦</span>
+            <span id="opt-label">AI Schedule Optimizer</span>
+          </button>
+        </div>
+      </nav>
 
+      <div class="dash-body">
+        <!-- SLIDE 1: OVERVIEW -->
+        <div class="dash-slide">
+          <!-- SURVIVAL SCORE -->
+          <div class="score-row">
+            <div class="score-card score-main-card">
+              <div class="score-ring-wrap">
+                <svg viewBox="0 0 72 72">
+                  <circle class="score-ring-bg" cx="36" cy="36" r="29" />
+                  <circle
+                    class="score-ring-fill"
+                    id="score-ring"
+                    cx="36"
+                    cy="36"
+                    r="29"
+                    stroke-dasharray="182"
+                    stroke-dashoffset="182"
+                  />
+                </svg>
+                <div
+                  class="score-ring-num"
+                  id="score-num"
+                  style="color: var(--red)"
+                >
+                  —
+                </div>
+              </div>
+              <div>
+                <div class="score-card-label">Survival Score</div>
+                <div
+                  style="
+                    font-size: 13px;
+                    color: var(--txt2);
+                    line-height: 1.5;
+                    max-width: 180px;
+                  "
+                  id="score-desc"
+                >
+                  Your semester stress level at a glance.
+                </div>
+              </div>
+            </div>
+            <div class="score-cards-mini">
+              <div class="score-card">
+                <div class="score-card-label">Total Deadlines</div>
+                <div class="score-card-val">24</div>
+                <div class="score-card-sub">across 3 courses</div>
+              </div>
+              <div class="score-card">
+                <div class="score-card-label">Danger Weeks</div>
+                <div class="score-card-val" id="danger-count">3</div>
+                <div class="score-card-sub" id="danger-sub">
+                  high-collision weeks
+                </div>
+              </div>
+              <div class="score-card">
+                <div class="score-card-label">Study Tasks</div>
+                <div class="score-card-val">61</div>
+                <div class="score-card-sub">AI-generated subtasks</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CONFLICT CALLOUTS -->
+          <div class="conflicts" id="conflicts-section">
+            <div class="conflict-card" id="c1">
+              <span class="conflict-badge danger">⚠ Critical</span>
+              <div class="conflict-text">
+                <strong>Week 8 — Triple collision:</strong> CS Midterm + History
+                10-page paper + Stats Problem Set all due within 48 hours. This
+                is your hardest week.
+              </div>
+            </div>
+            <div class="conflict-card" id="c2">
+              <span class="conflict-badge warn">⚡ Warning</span>
+              <div class="conflict-text">
+                <strong>Week 11 — Back-to-back crunch:</strong> Lit review due
+                Monday, group project milestone Friday. Only 4 days to pivot
+                between two completely different courses.
+              </div>
+            </div>
+            <div class="conflict-card" id="c3">
+              <span class="conflict-badge warn">⚡ Warning</span>
+              <div class="conflict-text">
+                <strong>Week 14 — Finals ramp-up:</strong> CS final project +
+                Stats final exam fall in the same 72-hour window before the
+                official finals period begins.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLIDE 2: HEATMAP -->
+        <div class="dash-slide">
+          <!-- HEATMAP -->
+          <div class="section">
+            <div class="section-header">
+              <div>
+                <div class="section-title">
+                  Workload Heatmap — 16-Week Semester
+                </div>
+                <div class="section-sub">
+                  Bar height = combined deadline pressure per week
+                </div>
+              </div>
+            </div>
+            <div class="card-inner" style="padding: 18px 16px 8px">
+              <div class="heatmap-bars" id="heatmap"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLIDE 3: TIMELINE -->
+        <div class="dash-slide">
+          <!-- TIMELINE + COURSES -->
+          <div class="two-col">
+            <div>
+              <div class="section-header">
+                <div class="section-title">Master Timeline</div>
+                <button
+                  class="export-btn"
+                  onclick="showToast('📋 Copied to clipboard!')"
+                >
+                  Copy all
+                </button>
+              </div>
+              <div
+                class="card-inner"
+                style="max-height: 520px; overflow-y: auto; padding: 10px 16px"
+              >
+                <ul class="timeline-list" id="timeline"></ul>
+              </div>
+            </div>
+            <div>
+              <div class="section-header">
+                <div class="section-title">Courses Detected</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px">
+                <div class="card-inner">
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 10px;
+                      margin-bottom: 10px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 50%;
+                        background: #378add;
+                        flex-shrink: 0;
+                      "
+                    ></div>
+                    <div style="font-size: 14px; font-weight: 600">
+                      CS 280 — Algorithms
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--txt3);
+                      line-height: 1.6;
+                    "
+                  >
+                    Prof. Chen &nbsp;·&nbsp; MWF 10–11am<br />7 assignments
+                    &nbsp;·&nbsp; 2 midterms &nbsp;·&nbsp; 1 final project
+                  </div>
+                </div>
+                <div class="card-inner">
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 10px;
+                      margin-bottom: 10px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 50%;
+                        background: #d85a30;
+                        flex-shrink: 0;
+                      "
+                    ></div>
+                    <div style="font-size: 14px; font-weight: 600">
+                      HIST 215 — Modern Europe
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--txt3);
+                      line-height: 1.6;
+                    "
+                  >
+                    Prof. Okonkwo &nbsp;·&nbsp; TTh 2–3:30pm<br />3 papers
+                    &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final essay
+                  </div>
+                </div>
+                <div class="card-inner">
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 10px;
+                      margin-bottom: 10px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 50%;
+                        background: #1d9e75;
+                        flex-shrink: 0;
+                      "
+                    ></div>
+                    <div style="font-size: 14px; font-weight: 600">
+                      STATS 301 — Applied Stats
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--txt3);
+                      line-height: 1.6;
+                    "
+                  >
+                    Prof. Reyes &nbsp;·&nbsp; MWF 1–2pm<br />8 problem sets
+                    &nbsp;·&nbsp; 1 midterm &nbsp;·&nbsp; 1 final exam
+                  </div>
+                </div>
+                <div class="card-inner" style="background: var(--bg2)">
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--txt3);
+                      text-align: center;
+                      padding: 4px 0;
+                    "
+                  >
+                    ✦ AI generated 61 micro-tasks from your syllabi
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- End Slide 3 -->
+      </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script src="script.js"></script>
+  </body>
 </html>
