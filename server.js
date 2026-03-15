@@ -8,6 +8,12 @@ const pdfParse = require('pdf-parse'); // Fallback
 const mammoth = require('mammoth');
 
 const app = express();
+// Prevent EPIPE crashes when client disconnects before response is sent
+process.on('uncaughtException', (err) => {
+  if (err.code === 'EPIPE') return; // client disconnected — ignore
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
 
 const getApiKey = () => {
   const key = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
@@ -171,6 +177,14 @@ app.use(express.json());
 
 // Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
+
+app.use((req, res, next) => {
+  res.on('error', (err) => {
+    if (err.code === 'EPIPE') return; // client disconnected — ignore
+    console.error('Response error:', err);
+  });
+  next();
+});
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
