@@ -242,18 +242,29 @@ function deriveCourseFromFilename(name) {
 }
 
 function deriveHeatmapFromTimeline(timeline) {
-  const weeks = new Array(16).fill(0);
+  // Count actual items per week (not points)
+  const itemCounts = new Array(16).fill(0);
+  const majorItemCounts = new Array(16).fill(0);
+  
   timeline.forEach(item => {
     const w = Math.min(16, Math.max(1, item.week));
-    weeks[w - 1] += 3;
-    if (/\bmidterm|final|exam|paper|project\b/i.test(item.title)) weeks[w - 1] += 4;
+    itemCounts[w - 1]++;
+    if (/\bmidterm|final|exam|paper|project\b/i.test(item.title)) {
+      majorItemCounts[w - 1]++;
+    }
   });
-  const max = Math.max(...weeks, 1);
-  const result = weeks.map(v => {
-    if (max === 0) return 0;
-    return Math.min(10, Math.round((v / max) * 8) + 2);
+  
+  // Map to 0-5 scale based on actual item counts
+  // 0 items = 0, 1 item = 1, 2 items = 2, 3 items = 3, 4 items = 4, 5+ items = 5
+  // Major items add +1 to the value (capped at 5)
+  const result = itemCounts.map((count, i) => {
+    if (count === 0) return 0;
+    const baseValue = Math.min(5, count); // Base value from item count (max 5)
+    const majorBonus = Math.min(1, majorItemCounts[i]); // +1 if has major items
+    return Math.min(5, baseValue + majorBonus);
   });
-  console.log('Heatmap calculation - raw weeks:', weeks, 'max:', max, 'result:', result);
+  
+  console.log('Heatmap calculation - item counts:', itemCounts, 'major counts:', majorItemCounts, 'result:', result);
   return result;
 }
 
@@ -327,7 +338,7 @@ async function handleFileUpload() {
   const heatmap = deriveHeatmapFromTimeline(allItems);
   console.log('Calculated heatmap from uploaded items:', heatmap);
   console.log('Items by week:', allItems.map(i => ({ week: i.week, title: i.title })));
-  const collisionWeeks = heatmap.filter((v, i) => v >= 7).length;
+  const collisionWeeks = heatmap.filter((v, i) => v >= 4).length; // Updated for 0-5 scale (4-5 = high collision)
   const score = Math.max(15, Math.min(85, 80 - collisionWeeks * 15));
 
   const studyTasksCount = allItems.reduce((s, i) => s + (i.sub?.length || 1), 0);
@@ -488,11 +499,11 @@ function startLoading(fileNames) {
 
   const steps = [
     [0, 0, 'Reading your syllabi…'],
-    [600, 25, 'Parsing deadlines and assignments…'],
-    [1200, 52, 'Identifying collision points…'],
-    [1900, 75, 'Building your survival calendar…'],
-    [2500, 90, 'Generating micro-tasks…'],
-    [3200, 100, 'Your survival plan is ready ✓'],
+    [800, 20, 'Parsing deadlines and assignments…'],
+    [1600, 45, 'Identifying collision points…'],
+    [2500, 65, 'Building your survival calendar…'],
+    [3500, 85, 'Generating micro-tasks…'],
+    [4500, 100, 'Your survival plan is ready ✓'],
   ];
 
   const fill = document.getElementById('progress-fill');
@@ -532,7 +543,7 @@ function startLoading(fileNames) {
     
     // Calculate heatmap from demo timeline data (not hardcoded)
     const demoHeatmap = deriveHeatmapFromTimeline(timelineData);
-    const demoCollisionWeeks = demoHeatmap.filter((v, i) => v >= 7).length;
+    const demoCollisionWeeks = demoHeatmap.filter((v, i) => v >= 4).length; // Updated for 0-5 scale (4-5 = high collision)
     const demoScore = Math.max(15, Math.min(85, 80 - demoCollisionWeeks * 15));
     
     // Simulate uploadedData so that the API knows what to optimize
@@ -551,7 +562,7 @@ function startLoading(fileNames) {
     renderTimeline(timelineData);
     renderUploadedCourses(demoCourses, 61);
     animateScore(demoScore, false, demoCollisionWeeks);
-  }, 3800);
+  }, 5000);
 }
 
 // ── SCREEN SWITCHING ──
@@ -563,14 +574,16 @@ function showScreen(id) {
 // ── HEATMAP ──
 function getBarColor(val, opt) {
   if (opt) {
-    if (val <= 4) return '#97C459';
-    if (val <= 6) return '#EF9F27';
+    if (val <= 2) return '#97C459';
+    if (val <= 3) return '#EF9F27';
     return '#63991a';
   }
-  if (val >= 9) return '#E24B4A';
-  if (val >= 7) return '#EF9F27';
-  if (val >= 5) return '#BA7517';
-  return '#B4B2A9';
+  // Updated for 0-5 scale
+  if (val >= 4) return '#E24B4A';  // High stress (4-5)
+  if (val >= 3) return '#EF9F27';  // Medium-high stress (3)
+  if (val >= 2) return '#BA7517';  // Medium stress (2)
+  if (val >= 1) return '#B4B2A9';  // Low stress (1)
+  return '#B4B2A9';  // No stress (0)
 }
 
 function renderHeatmap(data, opt) {
@@ -579,7 +592,7 @@ function renderHeatmap(data, opt) {
     console.error('Heatmap container not found!');
     return;
   }
-  const max = 10;
+  const max = 5; // Changed from 10 to 5
   container.innerHTML = '<div class="heatmap-axis"></div>';
   console.log('Rendering heatmap with data:', data, 'optimized:', opt);
   data.forEach((val, i) => {
@@ -590,7 +603,7 @@ function renderHeatmap(data, opt) {
     const bar = document.createElement('div');
     bar.className = 'heatmap-bar';
     bar.style.cssText = `height:0%;background:${color};`;
-    bar.setAttribute('data-tip', `W${i + 1}: ${val}/10`);
+    bar.setAttribute('data-tip', `W${i + 1}: ${val}/5`);
     wrap.appendChild(bar);
     const lbl = document.createElement('div');
     lbl.className = 'heatmap-label';
@@ -604,7 +617,7 @@ function renderHeatmap(data, opt) {
     container.appendChild(wrap);
     setTimeout(() => { bar.style.height = pct + '%'; }, 80 + i * 35);
   });
-  console.log('Heatmap rendered. Week 12 value:', data[11], 'Week 12 should show:', data[11] + '/10');
+  console.log('Heatmap rendered. Week 12 value:', data[11], 'Week 12 should show:', data[11] + '/5');
 }
 
 // ── TIMELINE SYNC ──
@@ -728,37 +741,47 @@ async function toggleOptimize() {
     let optTimelineData = [];
     let optWeeksData = [];
     
-    // Check if we already fetched it
-    if (uploadedData.optimizedTimeline) {
-      optTimelineData = uploadedData.optimizedTimeline;
+    // For demo profiles, use pre-generated optimized data (no LLM call)
+    if (uploadedData.isDemo) {
+      if (currentProfile === 'umich-lsa') {
+        optTimelineData = UMICH_LSA_TL_OPT;
+      } else {
+        optTimelineData = TL_OPT;
+      }
     } else {
-      label.textContent = 'Optimizing...';
-      btn.style.opacity = '0.7';
-      btn.disabled = true;
+      // For uploaded files, check if we already fetched it
+      if (uploadedData.optimizedTimeline) {
+        optTimelineData = uploadedData.optimizedTimeline;
+      } else {
+        // Only call LLM for uploaded files (not demos)
+        label.textContent = 'Optimizing...';
+        btn.style.opacity = '0.7';
+        btn.disabled = true;
 
-      try {
-        const response = await fetch('/api/optimize-schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ timeline: uploadedData.timeline })
-        });
-        
-        if (!response.ok) throw new Error('API failed');
-        const data = await response.json();
-        
-        if (data.success && data.optimizedTimeline) {
-          optTimelineData = data.optimizedTimeline;
-          uploadedData.optimizedTimeline = optTimelineData; // cache it
-        } else {
-          throw new Error('Invalid AI response');
+        try {
+          const response = await fetch('/api/optimize-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeline: uploadedData.timeline })
+          });
+          
+          if (!response.ok) throw new Error('API failed');
+          const data = await response.json();
+          
+          if (data.success && data.optimizedTimeline) {
+            optTimelineData = data.optimizedTimeline;
+            uploadedData.optimizedTimeline = optTimelineData; // cache it
+          } else {
+            throw new Error('Invalid AI response');
+          }
+        } catch (e) {
+          console.error("Optimization failed, falling back to heuristic", e);
+          showToast('AI Optimization failed. Using heuristic fallback.');
+          optTimelineData = createOptimizedFromUploaded(uploadedData.timeline);
+        } finally {
+          btn.style.opacity = '1';
+          btn.disabled = false;
         }
-      } catch (e) {
-        console.error("Optimization failed, falling back to heuristic", e);
-        showToast('AI Optimization failed. Using heuristic fallback.');
-        optTimelineData = createOptimizedFromUploaded(uploadedData.timeline);
-      } finally {
-        btn.style.opacity = '1';
-        btn.disabled = false;
       }
     }
     
